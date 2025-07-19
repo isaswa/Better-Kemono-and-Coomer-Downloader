@@ -7,7 +7,7 @@ This is a forked better version of [**Kemono and Coomer Downloader**](https://gi
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=e43b/Kemono-and-Coomer-Downloader&type=Date)](https://star-history.com/#e43b/Kemono-and-Coomer-Downloader&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=isaswa/Better-Kemono-and-Coomer-Downloader&type=Date)](https://star-history.com/#isaswa/Better-Kemono-and-Coomer-Downloader&Date)
 
 ## How to Use
 
