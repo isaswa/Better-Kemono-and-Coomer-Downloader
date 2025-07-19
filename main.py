@@ -5,6 +5,7 @@ import re
 import json
 import time
 import importlib
+from urllib.parse import urlparse
 
 
 def install_requirements():
@@ -56,11 +57,9 @@ def display_logo():
 | |_| | (_) \ V  V /| | | | | (_) | (_| | (_| |  __/ |   
 |____/ \___/ \_/\_/ |_| |_|_|\___/ \__,_|\__,_|\___|_|   
 
-Created by E43b
-GitHub: https://github.com/e43b
-Discord: https://discord.gg/GNJbxzD8bK
-Project Repository: https://github.com/e43b/Kemono-and-Coomer-Downloader
-Donate: https://ko-fi.com/e43bs
+Project Repository: https://github.com/isaswa/Better-Kemono-and-Coomer-Downloader
+Modified from: Kemono-and-Coomer-Downloader by e43b
+License: MIT License
 """
     print(logo)
 
@@ -135,9 +134,7 @@ def run_download_script(json_path):
         if config["process_from_oldest"]:
             post_ids = sorted(post_ids)  # Order from oldest to newest
         else:
-            post_ids = sorted(
-                post_ids, reverse=True
-            )  # Order from newest to oldest
+            post_ids = sorted(post_ids, reverse=True)  # Order from newest to oldest
 
         # Base folder for posts using path normalization
         posts_folder = normalize_path(os.path.join(os.path.dirname(json_path), "posts"))
@@ -244,10 +241,10 @@ def download_specific_posts():
 
     if choice == "3":
         return
-
     elif choice == "1":
-        print("Paste the links to the posts (separated by commas):")
-        links = input("Links: ").split(",")
+        print("Paste the links to the posts (separated by commas or space):")
+        content = input("Links: ")
+        links = re.split(r"[,\s]+", content)
     elif choice == "2":
         file_path = input("Enter the path to the TXT file: ").strip()
         if os.path.exists(file_path):
@@ -268,10 +265,8 @@ def download_specific_posts():
 
     for link in links:
         try:
-            domain = link.split("/")[2]
-            if domain == "kemono.su":
-                script_path = os.path.join("src", "kcposts.py")
-            elif domain == "coomer.su":
+            domain = urlparse(link).netloc
+            if domain == "kemono.su" or domain == "coomer.su":
                 script_path = os.path.join("src", "kcposts.py")
             else:
                 print(f"Domain not supported: {domain}")
