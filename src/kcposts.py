@@ -3,6 +3,7 @@ import sys
 import json
 import requests
 import re
+from tqdm import tqdm
 from html.parser import HTMLParser
 from urllib.parse import quote, urlparse, unquote
 
@@ -160,7 +161,7 @@ def adapt_file_name(name):
     return sanitized[:50]  # Limit length to 50 characters
 
 
-def download_files(file_list, folder_path):
+def download_files(file_list, folder_path, config):
     """
     Download files from a list of URLs and save them with unique names in the folder_path.
 
@@ -185,6 +186,9 @@ def download_files(file_list, folder_path):
         if not extension:
             extension = os.path.splitext(parsed_url.path)[1] or ".bin"
 
+        if extension == ".jpeg":
+            extension = ".jpg"
+
         # Handle case where no original name is provided
         if not original_name or original_name.strip() == "":
             sanitized_name = str(idx)
@@ -199,19 +203,34 @@ def download_files(file_list, folder_path):
         seen_files.add(file_name)
         file_path = os.path.join(folder_path, file_name)
 
-        # TODO: skip downlaoad if the file has already existed
+        if config["skip_existed_files"] and os.path.exists(file_path):
+            print(f"Skipped (existed): {file_name}")
+            continue
 
         # Download the file
+        block_size = 8192
+        # for debugging
+        # print(f"Start downloading: {url}")
         try:
             response = requests.get(url, stream=True)
             response.raise_for_status()
-            with open(file_path, "wb") as file:
-                # FIXME: IncompleteRead error here if file is too large
-                for chunk in response.iter_content(chunk_size=8192):
-                    file.write(chunk)
+
+            total_size = int(response.headers.get("content-length", 0))
+            with tqdm(total=total_size, unit="B", unit_scale=True) as progress_bar:
+                with open(file_path, "wb") as file:
+                    for data in response.iter_content(block_size):
+                        progress_bar.update(len(data))
+                        file.write(data)
+
+            if total_size != 0 and progress_bar.n != total_size:
+                raise RuntimeError("internal error: failed to download whole file ")
+
             print(f"Downloaded: {file_name}")
-        except Exception as e:
-            print(f"Download failed {url}: {e}")
+        except Exception as err:
+            # TODO: record failed downloads and return result as partially failed
+
+            print(f"Download failed {url}:")
+            print(err)
 
 
 def save_post_info(post_data, folder_path, file_format):
@@ -369,7 +388,7 @@ def save_post_content(post_data, folder_path, config):
     )
 
     # Download files to the specified folder
-    download_files(unique_files_to_download, folder_path)
+    download_files(unique_files_to_download, folder_path, config)
 
 
 def sanitize_filename(value):
