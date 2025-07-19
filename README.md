@@ -1,27 +1,9 @@
 # Kemono and Coomer Downloader
 
-[![Views](https://hits.sh/github.com/e43bkmncoomen/hits.svg)](https://github.com/e43b/Kemono-and-Coomer-Downloader/)
+[![Views](https://hits.sh/github.com/isaswa/hits.svg)](https://github.com/isaswa/Better-Kemono-and-Coomer-Downloader)
 
-[![](img/en-flag.svg) English](README.md) | [![](img/br.png) Português](README-ptbr.md)
+This is a forked better version of [**Kemono and Coomer Downloader**](https://github.com/e43b/Kemono-and-Coomer-Downloader/), since the original project has too many bugs and bad practices in the codebase, and also in a very inactive status in terms of maintaining the project.
 
-The **Kemono and Coomer Downloader** is a tool that allows you to download posts from [Kemono](https://kemono.su/) and [Coomer](https://coomer.su/) websites.
-
-With this tool, you can download single posts, multiple posts sequentially, or download all posts from a Kemono or Coomer profile.
-
-## Support Tool Development 💖
-
-This tool was created with dedication to make your life easier and is maintained independently. If you find it useful and would like to contribute to its continuous improvement, consider making a donation.
-
-Any help is welcome and will be used to cover maintenance costs, improvements, and the addition of new features. Your support makes all the difference!
-
-[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/e43bs)
-
-### Why donate?
-- **Continuous maintenance**: Help keep the tool always updated and working.
-- **New features**: Contribute to implementing new functionalities requested by the community.
-- **Show appreciation**: Show your support for the project and encourage the development of more tools like this.
-
-🎉 Thank you for considering supporting this project!
 
 ## Star History
 
@@ -30,19 +12,24 @@ Any help is welcome and will be used to cover maintenance costs, improvements, a
 ## How to Use
 
 1. **Make sure you have Python installed on your system.**
+
 2. **Clone this repository:**
+
 ```sh
-git clone https://github.com/e43b/Kemono-and-Coomer-Downloader/
+git clone https://github.com/isaswa/Better-Kemono-and-Coomer-Downloader/
 ```
 
 3. **Navigate to the project directory:**
+
 ```sh
-cd Kemono-and-Coomer-Downloader
+cd Better-Kemono-and-Coomer-Downloader
 ```
 
-4. **Select your preferred language:**
-   - The codeen folder contains the English version.
-   - The codept folder contains the Portuguese version.
+4. **Install the dependencies**
+
+```sh
+pip install -r requirements.txt
+```
 
 5. **Run the main script:**
 ```sh
@@ -50,10 +37,6 @@ python main.py
 ```
 
 6. **Follow the menu instructions to choose what you want to download or customize the program.**
-
-## Libraries
-
-The required library is: requests. When starting the script for the first time, if the library is not installed, it will be installed automatically.
 
 ## Features
 
@@ -85,7 +68,7 @@ If you have multiple post links to download, simplify the process using a `.txt`
 
 1. Open a text editor of your choice (like Notepad, VS Code, or other).
 2. List the post links in the following format:
-   - Separate links with **commas**.
+   - Separate links with **commas, spaces or linebreaks**.
    - Example file content:
 ```sh
 https://coomer.su/onlyfans/user/rosiee616/post/1005002977, https://kemono.su/patreon/user/9919437/post/103396563
@@ -309,18 +292,6 @@ The `files.md` (or `files.txt`, depending on the chosen configuration) file cont
 
 ## Contributions
 
-This project is **open-source**, and your participation is very welcome! If you want to help improve the tool, feel free to:
+Leave any comment or bug report in the [Issues page](https://github.com/isaswa/Better-Kemono-and-Coomer-Downloader/issues).
 
-- **Send suggestions** for new features or improvements.
-- **Report issues** or bugs found.
-- **Submit pull requests** with your own contributions.
-
-You can contribute in various ways through our [GitHub repository](https://github.com/e43b/Kemono-and-Coomer--Downloader/) or interact with the community on our [Discord](https://discord.gg/GNJbxzD8bK).
-
-## Author
-
-The **Kemono and Coomer Downloader** was developed and is maintained by [E43b](https://github.com/e43b). Our goal is to make the process of downloading posts from **Kemono** and **Coomer** sites simpler, faster, and more organized, providing a smooth and accessible experience for users.
-
-## Support
-
-If you encounter problems, bugs, or have questions, our community is ready to help! Contact us through our [Discord](https://discord.gg/GNJbxzD8bK) for support or to ask questions.
+Any pull request is welcome, but it's better to provide a good evidence or tests for proving fixed bugs/issues.
