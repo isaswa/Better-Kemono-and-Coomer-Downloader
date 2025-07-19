@@ -10,11 +10,11 @@ def save_json(file_path, data):
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 def load_config(file_path):
-    """Carregar a configuração de um arquivo JSON."""
+    """Load configuration from a JSON file."""
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {}  # Retorna um dicionário vazio se o arquivo não existir
+    return {}  # Return an empty dictionary if the file doesn't exist
 
 def get_base_config(profile_url):
     """
@@ -33,35 +33,35 @@ def get_base_config(profile_url):
     return BASE_API_URL, BASE_SERVER, BASE_DIR
 
 def is_offset(value):
-    """Determina se o valor é um offset (até 5 dígitos) ou um ID."""
+    """Determine if the value is an offset (up to 5 digits) or an ID."""
     try:
-        # Tenta converter para inteiro e verifica o comprimento
+        # Try to convert to integer and check the length
         return isinstance(int(value), int) and len(value) <= 5
     except ValueError:
-        # Se não for um número, não é offset
+        # If not a number, it's not an offset
         return False
 
 def parse_fetch_mode(fetch_mode, total_count):
     """
-    Analisa o modo de busca e retorna os offsets correspondentes
+    Parse the fetch mode and return the corresponding offsets
     """
-    # Caso especial: buscar todos os posts
+    # Special case: fetch all posts
     if fetch_mode == "all":
         return list(range(0, total_count, 50))
     
-    # Se for um número único (página específica)
+    # If it's a single number (specific page)
     if fetch_mode.isdigit():
         if is_offset(fetch_mode):
             return [int(fetch_mode)]
         else:
-            # Se for um ID específico, retorna como tal
+            # If it's a specific ID, return as such
             return ["id:" + fetch_mode]
     
-    # Caso seja um intervalo
+    # If it's a range
     if "-" in fetch_mode:
         start, end = fetch_mode.split("-")
         
-        # Tratar "start" e "end" especificamente
+        # Handle "start" and "end" specifically
         if start == "start":
             start = 0
         else:
@@ -72,51 +72,51 @@ def parse_fetch_mode(fetch_mode, total_count):
         else:
             end = int(end)
         
-        # Se os valores são offsets
+        # If the values are offsets
         if start <= total_count and end <= total_count:
-            # Calcular o número de páginas necessárias para cobrir o intervalo
-            # Usa ceil para garantir que inclua a página final
+            # Calculate the number of pages needed to cover the range
+            # Use ceil to ensure it includes the final page
             import math
             num_pages = math.ceil((end - start) / 50)
             
-            # Gerar lista de offsets
+            # Generate list of offsets
             return [start + i * 50 for i in range(num_pages)]
         
-        # Se parecem ser IDs, retorna o intervalo de IDs
+        # If they appear to be IDs, return the ID range
         return ["id:" + str(start) + "-" + str(end)]
     
-    raise ValueError(f"Modo de busca inválido: {fetch_mode}")
+    raise ValueError(f"Invalid fetch mode: {fetch_mode}")
 
 def get_artist_info(profile_url):
-    # Extrair serviço e user_id do URL
+    # Extract service and user_id from URL
     parts = profile_url.split("/")
     service = parts[-3]
     user_id = parts[-1]
     return service, user_id
 
 def fetch_posts(base_api_url, service, user_id, offset=0):
-    # Buscar posts da API
+    # Fetch posts from API
     url = f"{base_api_url}/{service}/user/{user_id}/posts-legacy?o={offset}"
     response = requests.get(url)
     response.raise_for_status()
     return response.json()
 
 def save_json_incrementally(file_path, new_posts, start_offset, end_offset):
-    # Criar um novo dicionário com os posts atuais
+    # Create a new dictionary with current posts
     data = {
         "total_posts": len(new_posts),
         "posts": new_posts
     }
     
-    # Salvar o novo arquivo, substituindo o existente
+    # Save the new file, replacing the existing one
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 def process_posts(posts, previews, attachments_data, page_number, offset, base_server, save_empty_files=True, id_filter=None):
-    # Processar posts e organizar os links dos arquivos
+    # Process posts and organize file links
     processed = []
     for post in posts:
-        # Filtro de ID se especificado
+        # ID filter if specified
         if id_filter and not id_filter(post['id']):
             continue
 
@@ -131,10 +131,10 @@ def process_posts(posts, previews, attachments_data, page_number, offset, base_s
             "files": []
         }
 
-        # Combina previews e attachments_data em uma única lista para busca
+        # Combine previews and attachments_data into a single list for searching
         all_data = previews + attachments_data
 
-        # Processar arquivos no campo file
+        # Process files in the file field
         if "file" in post and post["file"]:
             matching_data = next(
                 (item for item in all_data if item["path"] == post["file"]["path"]),
@@ -145,7 +145,7 @@ def process_posts(posts, previews, attachments_data, page_number, offset, base_s
                 if file_url not in [f["url"] for f in result["files"]]:
                     result["files"].append({"name": post["file"]["name"], "url": file_url})
 
-        # Processar arquivos no campo attachments
+        # Process files in the attachments field
         for attachment in post.get("attachments", []):
             matching_data = next(
                 (item for item in all_data if item["path"] == attachment["path"]),
@@ -156,7 +156,7 @@ def process_posts(posts, previews, attachments_data, page_number, offset, base_s
                 if file_url not in [f["url"] for f in result["files"]]:
                     result["files"].append({"name": attachment["name"], "url": file_url})
 
-        # Ignorar posts sem arquivos se save_empty_files for False
+        # Ignore posts without files if save_empty_files is False
         if not save_empty_files and not result["files"]:
             continue
 
@@ -165,42 +165,42 @@ def process_posts(posts, previews, attachments_data, page_number, offset, base_s
     return processed
 
 def sanitize_filename(value):
-    """Remove caracteres que podem quebrar a criação de pastas."""
+    """Remove characters that can break folder creation."""
     return value.replace("/", "_").replace("\\", "_")
 
 def main():
-    # Verificar argumentos de linha de comando
+    # Check command line arguments
     if len(sys.argv) < 2 or len(sys.argv) > 3:
         print("Usage: python posts.py <profile_url> [fetch_mode]")
-        print("Possible search modes:")
+        print("Possible fetch modes:")
         print("- all")
         print("- <page number>")
         print("- start-end")
         print("- <start_id>-<end_id>")
         sys.exit(1)
 
-    # Definir profile_url do argumento
+    # Define profile_url from argument
     profile_url = sys.argv[1]
     
-    # Definir FETCH_MODE (padrão para "all" se não especificado)
+    # Define FETCH_MODE (default to "all" if not specified)
     FETCH_MODE = sys.argv[2] if len(sys.argv) == 3 else "all"
     
     config_file_path = os.path.join("config", "conf.json")
 
-    # Carregar a configuração do arquivo JSON
+    # Load configuration from JSON file
     config = load_config(config_file_path)
 
-    # Pegar o valor de 'process_from_oldest' da configuração
-    SAVE_EMPTY_FILES = config.get("get_empty_posts", False)  # Alterar para True se quiser salvar posts sem arquivos
+    # Get the value of 'process_from_oldest' from configuration
+    SAVE_EMPTY_FILES = config.get("get_empty_posts", False)  # Change to True if you want to save posts without files
 
-    # Configurar base URLs dinamicamente
+    # Configure base URLs dynamically
     BASE_API_URL, BASE_SERVER, BASE_DIR = get_base_config(profile_url)
     
-    # Pasta base
+    # Base folder
     base_dir = BASE_DIR
     os.makedirs(base_dir, exist_ok=True)
 
-    # Atualizar o arquivo profiles.json
+    # Update the profiles.json file
     profiles_file = os.path.join(base_dir, "profiles.json")
     if os.path.exists(profiles_file):
         with open(profiles_file, "r", encoding="utf-8") as f:
@@ -208,13 +208,13 @@ def main():
     else:
         profiles = {}
 
-    # Buscar primeiro conjunto de posts para informações gerais
+    # Fetch first set of posts for general information
     service, user_id = get_artist_info(profile_url)
     initial_data = fetch_posts(BASE_API_URL, service, user_id, offset=0)
     name = initial_data["props"]["name"]
     count = initial_data["props"]["count"]
 
-    # Salvar informações do artista
+    # Save artist information
     artist_info = {
         "id": user_id,
         "name": name,
@@ -227,16 +227,16 @@ def main():
     profiles[user_id] = artist_info
     save_json(profiles_file, profiles)
 
-    # Sanitizar os valores
+    # Sanitize the values
     safe_name = sanitize_filename(name)
     safe_service = sanitize_filename(service)
     safe_user_id = sanitize_filename(user_id)
 
-    # Pasta do artista
+    # Artist folder
     artist_dir = os.path.join(base_dir, f"{safe_name}-{safe_service}-{safe_user_id}")
     os.makedirs(artist_dir, exist_ok=True)
 
-    # Processar modo de busca
+    # Process fetch mode
     today = datetime.now().strftime("%Y-%m-%d")
     
     try:
@@ -245,11 +245,11 @@ def main():
         print(e)
         return
 
-    # Verificar se é busca por ID específico
+    # Check if it's a search for specific ID
     id_filter = None
     found_ids = set()
     if isinstance(offsets[0], str) and offsets[0].startswith("id:"):
-        # Extrair IDs para filtro
+        # Extract IDs for filter
         id_range = offsets[0].split(":")[1]
         
         if "-" in id_range:
@@ -258,17 +258,17 @@ def main():
         else:
             id_filter = lambda x: x == id_range
 
-        # Redefinir offsets para varrer todas as páginas
+        # Redefine offsets to scan all pages
         offsets = list(range(0, count, 50))
 
-    # Nome do arquivo JSON com range de offsets
+    # JSON filename with offset range
     if len(offsets) > 1:
         file_path = os.path.join(artist_dir, f"posts-{offsets[0]}-{offsets[-1]}-{today}.json")
     else:
         file_path = os.path.join(artist_dir, f"posts-{offsets[0]}-{today}.json")
 
     new_posts= []
-    # Processamento principal
+    # Main processing
     for offset in offsets:
         page_number = (offset // 50) + 1
         post_data = fetch_posts(BASE_API_URL, service, user_id, offset=offset)
@@ -287,20 +287,20 @@ def main():
             id_filter=id_filter
         )
         new_posts.extend(processed_posts)
-        # Salvar posts incrementais no JSON
+        # Save incremental posts to JSON
         if processed_posts:
             save_json_incrementally(file_path, new_posts, offset, offset+50)
             
-            # Verificar se encontrou os IDs desejados
+            # Check if found the desired IDs
             if id_filter:
                 found_ids.update(post['id'] for post in processed_posts)
                 
-                # Verificar se encontrou ambos os IDs
+                # Check if found both IDs
                 if (id1 in found_ids) and (id2 in found_ids):
-                    print(f"Found both IDs: {id1} e {id2}")
+                    print(f"Found both IDs: {id1} and {id2}")
                     break
 
-    # Imprimir o caminho completo do arquivo JSON gerado
+    # Print the full path of the generated JSON file
     print(f"{os.path.abspath(file_path)}")
 
 if __name__ == "__main__":

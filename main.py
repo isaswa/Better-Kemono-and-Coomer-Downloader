@@ -8,7 +8,7 @@ import importlib
 
 
 def install_requirements():
-    """Verifica e instala as dependências do requirements.txt."""
+    """Verify and install dependencies from requirements.txt."""
     requirements_file = "requirements.txt"
 
     if not os.path.exists(requirements_file):
@@ -17,17 +17,17 @@ def install_requirements():
 
     with open(requirements_file, "r", encoding="utf-8") as req_file:
         for line in req_file:
-            # Lê cada linha, ignora vazias ou comentários
+            # Read each line, ignore empty or comments
             package = line.strip()
             if package and not package.startswith("#"):
                 try:
-                    # Tenta importar o pacote para verificar se já está instalado
+                    # Try to import the package to check if it's already installed
                     package_name = package.split("==")[
                         0
-                    ]  # Ignora versão específica na importação
+                    ]  # Ignore specific version when importing
                     importlib.import_module(package_name)
                 except ImportError:
-                    # Se falhar, instala o pacote usando pip
+                    # If it fails, install the package using pip
                     print(f"Installing the package: {package}")
                     subprocess.check_call(
                         [sys.executable, "-m", "pip", "install", package]
@@ -35,12 +35,12 @@ def install_requirements():
 
 
 def clear_screen():
-    """Limpa a tela do console de forma compatível com diferentes sistemas operacionais"""
+    """Clear console screen in a cross-platform compatible way"""
     os.system("cls" if os.name == "nt" else "clear")
 
 
 def display_logo():
-    """Exibe o logo do projeto"""
+    """Display the project logo"""
     logo = """
  _  __                                                   
 | |/ /___ _ __ ___   ___  _ __   ___                     
@@ -67,18 +67,18 @@ Donate: https://ko-fi.com/e43bs
 
 def normalize_path(path):
     """
-    Normaliza o caminho do arquivo para lidar com caracteres não-ASCII
+    Normalize file path to handle non-ASCII characters
     """
     try:
-        # Se o caminho original existir, retorna ele
+        # If the original path exists, return it
         if os.path.exists(path):
             return path
 
-        # Extrai o nome do arquivo e os componentes do caminho
+        # Extract the filename and path components
         filename = os.path.basename(path)
         path_parts = path.split(os.sep)
 
-        # Identifica se está procurando em kemono ou coomer
+        # Identify if searching in kemono or coomer
         base_dir = None
         if "kemono" in path_parts:
             base_dir = "kemono"
@@ -86,12 +86,12 @@ def normalize_path(path):
             base_dir = "coomer"
 
         if base_dir:
-            # Procura em todos os subdiretórios do diretório base
+            # Search in all subdirectories of the base directory
             for root, dirs, files in os.walk(base_dir):
                 if filename in files:
                     return os.path.join(root, filename)
 
-        # Se ainda não encontrou, tenta o caminho normalizado
+        # If still not found, try the normalized path
         return os.path.abspath(os.path.normpath(path))
 
     except Exception as e:
@@ -100,65 +100,65 @@ def normalize_path(path):
 
 
 def run_download_script(json_path):
-    """Roda o script de download com o JSON gerado e faz tracking detalhado em tempo real"""
+    """Run the download script with the generated JSON and do detailed real-time tracking"""
     try:
-        # Normalizar o caminho do JSON
+        # Normalize the JSON path
         json_path = normalize_path(json_path)
 
-        # Verificar se o arquivo JSON existe
+        # Check if the JSON file exists
         if not os.path.exists(json_path):
             print(f"Error: JSON file not found: {json_path}")
             return
 
-        # Ler configurações
+        # Read configurations
         config_path = normalize_path(os.path.join("config", "conf.json"))
         with open(config_path, "r", encoding="utf-8") as config_file:
             config = json.load(config_file)
 
-        # Ler o JSON de posts
+        # Read the posts JSON
         with open(json_path, "r", encoding="utf-8") as posts_file:
             posts_data = json.load(posts_file)
 
-        # Análise inicial
+        # Initial analysis
         total_posts = posts_data["total_posts"]
         post_ids = [post["id"] for post in posts_data["posts"]]
 
-        # Contagem de arquivos
+        # File count
         total_files = sum(len(post["files"]) for post in posts_data["posts"])
 
-        # Imprimir informações iniciais
+        # Print initial information
         print(f"Post extraction completed: {total_posts} posts found")
         print(f"Total number of files to download: {total_files}")
         print("Starting post downloads")
 
-        # Determinar ordem de processamento
+        # Determine processing order
         if config["process_from_oldest"]:
-            post_ids = sorted(post_ids)  # Ordem do mais antigo ao mais recente
+            post_ids = sorted(post_ids)  # Order from oldest to newest
         else:
             post_ids = sorted(
                 post_ids, reverse=True
-            )  # Ordem do mais recente ao mais antigo
+            )  # Order from newest to oldest
 
-        # Pasta base para posts usando normalização de caminho
+        # Base folder for posts using path normalization
         posts_folder = normalize_path(os.path.join(os.path.dirname(json_path), "posts"))
         os.makedirs(posts_folder, exist_ok=True)
 
-        # Processar cada post
+        # Process each post
         for idx, post_id in enumerate(post_ids, 1):
-            # Encontrar dados do post específico
+            # Find specific post data
             post_data = next(
                 (p for p in posts_data["posts"] if p["id"] == post_id), None
             )
 
             if post_data:
-                # Pasta do post específico com normalização
+                # Specific post folder with normalization
                 post_folder = normalize_path(os.path.join(posts_folder, post_id))
                 os.makedirs(post_folder, exist_ok=True)
 
-                # Contar número de arquivos no JSON para este post
+                # Count number of files in JSON for this post
                 expected_files_count = len(post_data["files"])
 
-                # Contar arquivos já existentes na pasta
+                # Count existing files in the folder
                 existing_files = [
                     f
                     for f in os.listdir(post_folder)
@@ -166,15 +166,15 @@ def run_download_script(json_path):
                 ]
                 existing_files_count = len(existing_files)
 
-                # Se já tem todos os arquivos, pula o download
+                # If all files exist, skip the download
                 if existing_files_count == expected_files_count:
                     continue
 
                 try:
-                    # Normalizar caminho do script de download
+                    # Normalize download script path
                     download_script = normalize_path(os.path.join("src", "down.py"))
 
-                    # Use subprocess.Popen com caminho normalizado e suporte a Unicode
+                    # Use subprocess.Popen with normalized path and Unicode support
                     download_process = subprocess.Popen(
                         [sys.executable, download_script, json_path, post_id],
                         stdout=subprocess.PIPE,
@@ -183,7 +183,7 @@ def run_download_script(json_path):
                         encoding="utf-8",
                     )
 
-                    # Capturar e imprimir output em tempo real
+                    # Capture and print output in real time
                     while True:
                         output = download_process.stdout.readline()
                         if output == "" and download_process.poll() is not None:
@@ -191,10 +191,10 @@ def run_download_script(json_path):
                         if output:
                             print(output.strip())
 
-                    # Verificar código de retorno
+                    # Check return code
                     download_process.wait()
 
-                    # Após o download, verificar novamente os arquivos
+                    # After download, check files again
                     current_files = [
                         f
                         for f in os.listdir(post_folder)
@@ -202,7 +202,7 @@ def run_download_script(json_path):
                     ]
                     current_files_count = len(current_files)
 
-                    # Verificar o resultado do download
+                    # Check download result
                     if current_files_count == expected_files_count:
                         print(
                             f"Post {post_id} downloaded completely ({current_files_count}/{expected_files_count} files)"
@@ -215,21 +215,21 @@ def run_download_script(json_path):
                 except Exception as e:
                     print(f"Error while downloading post {post_id}: {e}")
 
-                # Pequeno delay para evitar sobrecarga
+                # Small delay to avoid overload
                 time.sleep(0.5)
 
         print("\nAll posts have been processed!")
 
     except Exception as e:
         print(f"Unexpected error: {e}")
-        # Adicionar mais detalhes para diagnóstico
+        # Add more details for diagnosis
         import traceback
 
         traceback.print_exc()
 
 
 def download_specific_posts():
-    """Opção para baixar posts específicos"""
+    """Option to download specific posts"""
     clear_screen()
     display_logo()
     print("Download 1 post or a few separate posts")
@@ -253,7 +253,8 @@ def download_specific_posts():
         if os.path.exists(file_path):
             with open(file_path, "r", encoding="utf-8") as file:
                 content = file.read()
-                links = content.split(",")
+                # Split by comma, space, or linebreak
+                links = re.split(r"[,\s\n]+", content)
         else:
             print(f"Error: The file '{file_path}' was not found.")
             input("\nPress Enter to continue...")
@@ -276,7 +277,7 @@ def download_specific_posts():
                 print(f"Domain not supported: {domain}")
                 continue
 
-            # Executa o script específico para o domínio
+            # Execute the specific script for the domain
             subprocess.run(["python", script_path, link], check=True)
         except IndexError:
             print(f"Link format error: {link}")
@@ -287,7 +288,7 @@ def download_specific_posts():
 
 
 def download_profile_posts():
-    """Opção para baixar posts de um perfil"""
+    """Option to download posts from a profile"""
     clear_screen()
     display_logo()
     print("Download Profile Posts")
@@ -313,11 +314,11 @@ def download_profile_posts():
                 ["python", os.path.join("src", "posts.py"), profile_link, "all"],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",  # Certifique-se de que a saída é decodificada corretamente
+                encoding="utf-8",  # Ensure output is correctly decoded
                 check=True,
             )
 
-            # Verificar se stdout contém dados
+            # Check if stdout contains data
             if posts_process.stdout:
                 for line in posts_process.stdout.split("\n"):
                     if line.endswith(".json"):
@@ -383,7 +384,7 @@ def download_profile_posts():
                     json_path = line.strip()
                     break
 
-        # Se um JSON foi gerado, roda o script de download
+        # If a JSON was generated, run the download script
         if json_path:
             run_download_script(json_path)
         else:
@@ -397,11 +398,11 @@ def download_profile_posts():
 
 
 def customize_settings():
-    """Opção para personalizar configurações"""
+    """Option to customize settings"""
     config_path = os.path.join("config", "conf.json")
     import json
 
-    # Carregar o arquivo de configuração
+    # Load the configuration file
     with open(config_path, "r") as f:
         config = json.load(f)
 
@@ -429,15 +430,15 @@ def customize_settings():
         elif choice == "3":
             config["save_info"] = not config["save_info"]
         elif choice == "4":
-            # Alternar entre "md" e "txt"
+            # Toggle between "md" and "txt"
             config["post_info"] = "txt" if config["post_info"] == "md" else "md"
         elif choice == "5":
-            # Sair do menu de configurações
+            # Exit the settings menu
             break
         else:
             print("Invalid option. Please try again.")
 
-        # Salvar as configurações no arquivo
+        # Save the configurations to file
         with open(config_path, "w") as f:
             json.dump(config, f, indent=4)
 
@@ -446,7 +447,7 @@ def customize_settings():
 
 
 def main_menu():
-    """Menu principal do aplicativo"""
+    """Application main menu"""
     while True:
         clear_screen()
         display_logo()

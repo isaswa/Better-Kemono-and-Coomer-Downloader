@@ -7,11 +7,11 @@ from concurrent.futures import ThreadPoolExecutor
 import sys
 
 def load_config(file_path):
-    """Carregar a configuração de um arquivo JSON."""
+    """Load configuration from a JSON file."""
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {}  # Retorna um dicionário vazio se o arquivo não existir
+    return {}  # Return an empty dictionary if the file doesn't exist
 
 def sanitize_filename(filename):
     """Sanitize filename by removing invalid characters and replacing spaces with underscores."""
@@ -60,10 +60,10 @@ def main():
         print("Usage: python down.py {json_path}")
         sys.exit(1)
 
-    # Pega o caminho do arquivo JSON a partir do argumento da linha de comando
+    # Get the JSON file path from command line argument
     json_file_path = sys.argv[1]
 
-    # Verifica se o arquivo existe
+    # Check if the file exists
     if not os.path.exists(json_file_path):
         print(f"Error: The file '{json_file_path}' was not found.")
         sys.exit(1)
@@ -76,14 +76,14 @@ def main():
     base_folder = os.path.join(os.path.dirname(json_file_path), "posts")
     os.makedirs(base_folder, exist_ok=True)
 
-    # Caminho para o arquivo de configuração
+    # Path to configuration file
     config_file_path = os.path.join("config", "conf.json")
 
-    # Carregar a configuração do arquivo JSON
+    # Load configuration from JSON file
     config = load_config(config_file_path)
 
-    # Pegar o valor de 'process_from_oldest' da configuração
-    process_from_oldest = config.get("process_from_oldest", True)  # Valor padrão é True
+    # Get the value of 'process_from_oldest' from configuration
+    process_from_oldest = config.get("process_from_oldest", True)  # Default value is True
 
     posts = data.get("posts", [])
     if process_from_oldest:
