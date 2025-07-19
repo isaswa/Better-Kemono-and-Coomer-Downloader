@@ -16,19 +16,27 @@ def load_config(config_path="config/conf.json"):
         with open(config_path, "r") as file:
             config = json.load(file)
         return {
-            "post_info": config.get(
-                "post_info", "md"
-            ),  # Default to md if not specified
-            "save_info": config.get(
-                "save_info", True
-            ),  # Default to True if not specified
+            "post_info": config.get("post_info", "md"),
+            "save_info": config.get("save_info", False),
+            "save_preview": config.get("save_preview", False),
+            "skip_existed_files": config.get("skip_existed_files", True),
         }
+    # Default configurations if file doesn't exist
     except FileNotFoundError:
-        # Default configurations if file doesn't exist
-        return {"post_info": "md", "save_info": True}
+        return {
+            "post_info": "md",
+            "save_info": False,
+            "save_preview": False,
+            "skip_existed_files": True,
+        }
     except json.JSONDecodeError:
         print(f"Error decoding {config_path}. Using default settings.")
-        return {"post_info": "md", "save_info": True}
+        return {
+            "post_info": "md",
+            "save_info": False,
+            "save_preview": False,
+            "skip_existed_files": True,
+        }
 
 
 def ensure_directory(path):
@@ -171,10 +179,11 @@ def download_files(file_list, folder_path):
             print(f"⚠️ Ignoring not allowed domain URL: {url}")
             continue
 
-        # Derive file extension
-        # FIXME: wrong data format: psd -> bin, example:
-        # https://n2.kemono.su/data/e2/fd/e2fdc4cb2eaa31833477a3dad7d5daed4a157ee686ce43c078a82957269063f2.bin?f=pixivrequest_misaki.psd
-        extension = os.path.splitext(parsed_url.path)[1] or ".bin"
+        # Derive file extension from original name if available, otherwise from URL path
+        if original_name and original_name.strip():
+            extension = os.path.splitext(original_name)[1]
+        if not extension:
+            extension = os.path.splitext(parsed_url.path)[1] or ".bin"
 
         # Handle case where no original name is provided
         if not original_name or original_name.strip() == "":
@@ -190,7 +199,7 @@ def download_files(file_list, folder_path):
         seen_files.add(file_name)
         file_path = os.path.join(folder_path, file_name)
 
-        # TODO: skip this part is file already exist
+        # TODO: skip downlaoad if the file has already existed
 
         # Download the file
         try:
@@ -205,6 +214,123 @@ def download_files(file_list, folder_path):
             print(f"Download failed {url}: {e}")
 
 
+def save_post_info(post_data, folder_path, file_format):
+    """
+    Save post information to a file (title, content, polls, embeds, and file links).
+
+    :param post_data: Dictionary containing post information
+    :param folder_path: Path to save the info file
+    :param file_format: File format ('md' or 'txt')
+    """
+    file_extension = ".md" if file_format == "md" else ".txt"
+    file_name = f"files{file_extension}"
+    file_path = os.path.join(folder_path, file_name)
+
+    title, raw_title = clean_html_to_text(post_data["post"]["title"])
+    content, raw_content = clean_html_to_text(post_data["post"]["content"])
+
+    with open(file_path, "w", encoding="utf-8") as file:
+        if file_format == "md":
+            file.write(f"# {title}\n\n")
+        else:
+            file.write(f"Title: {title}\n\n")
+
+        file.write(f"{content}\n\n")
+
+        poll = post_data["post"].get("poll")
+        if poll:
+            if file_format == "md":
+                file.write("## Poll Information\n\n")
+                file.write(f"**Poll Title:** {poll.get('title', 'No Title')}\n")
+                if poll.get("description"):
+                    file.write(f"\n**Description:** {poll['description']}\n")
+                file.write(
+                    f"\n**Multiple Choices Allowed:** {'Yes' if poll.get('allows_multiple') else 'No'}\n"
+                )
+                file.write(f"**Started:** {poll.get('created_at', 'N/A')}\n")
+                file.write(f"**Closes:** {poll.get('closes_at', 'N/A')}\n")
+                file.write(f"**Total Votes:** {poll.get('total_votes', 0)}\n\n")
+
+                file.write("### Choices and Votes\n\n")
+                for choice in poll.get("choices", []):
+                    file.write(
+                        f"- **{choice['text']}:** {choice.get('votes', 0)} votes\n"
+                    )
+            else:
+                file.write("Poll Information:\n\n")
+                file.write(f"Poll Title: {poll.get('title', 'No Title')}\n")
+                if poll.get("description"):
+                    file.write(f"Description: {poll['description']}\n")
+                file.write(
+                    f"Multiple Choices Allowed: {'Yes' if poll.get('allows_multiple') else 'No'}\n"
+                )
+                file.write(f"Started: {poll.get('created_at', 'N/A')}\n")
+                file.write(f"Closes: {poll.get('closes_at', 'N/A')}\n")
+                file.write(f"Total Votes: {poll.get('total_votes', 0)}\n\n")
+
+                file.write("Choices and Votes:\n")
+                for choice in poll.get("choices", []):
+                    file.write(f"- {choice['text']}: {choice.get('votes', 0)} votes\n")
+
+            file.write("\n")
+
+        embed = post_data["post"].get("embed")
+        if embed:
+            if file_format == "md":
+                file.write("## Embedded Content\n")
+            else:
+                file.write("Embedded Content:\n")
+            file.write(f"- URL: {embed.get('url', 'N/A')}\n")
+            file.write(f"- Subject: {embed.get('subject', 'N/A')}\n")
+            file.write(f"- Description: {embed.get('description', 'N/A')}\n")
+
+        file.write("\n---\n\n")
+
+        if file_format == "md":
+            file.write("## Raw Title and Content\n\n")
+        else:
+            file.write("Raw Title and Content:\n\n")
+        file.write(f"Raw Title: {raw_title}\n\n")
+        file.write(f"Raw Content:\n{raw_content}\n\n")
+
+        attachments = post_data.get("attachments", [])
+        if attachments:
+            if file_format == "md":
+                file.write("## Attachments\n\n")
+            else:
+                file.write("Attachments:\n\n")
+            for attach in attachments:
+                server_url = f"{attach['server']}/data{attach['path']}?f={adapt_file_name(attach['name'])}"
+                file.write(f"- {attach['name']}: {server_url}\n")
+
+        videos = post_data.get("videos", [])
+        if videos:
+            if file_format == "md":
+                file.write("## Videos\n\n")
+            else:
+                file.write("Videos:\n\n")
+            for video in videos:
+                server_url = f"{video['server']}/data{video['path']}?f={adapt_file_name(video['name'])}"
+                file.write(f"- {video['name']}: {server_url}\n")
+
+        images = []
+        for preview in post_data.get("previews", []):
+            if "name" in preview and "server" in preview and "path" in preview:
+                server_url = f"{preview['server']}/data{preview['path']}"
+                images.append((preview.get("name", ""), server_url))
+
+        if images:
+            if file_format == "md":
+                file.write("## Images\n\n")
+            else:
+                file.write("Images:\n\n")
+            for idx, (name, image_url) in enumerate(images, 1):
+                if file_format == "md":
+                    file.write(f"![Image {idx}]({image_url}) - {name}\n")
+                else:
+                    file.write(f"Image {idx}: {image_url} (Name: {name})\n")
+
+
 def save_post_content(post_data, folder_path, config):
     """
     Save post content and download files based on configuration settings.
@@ -216,131 +342,8 @@ def save_post_content(post_data, folder_path, config):
     """
     ensure_directory(folder_path)
 
-    # Use post_info configuration to define format
-    file_format = config["post_info"].lower()
-    file_extension = ".md" if file_format == "md" else ".txt"
-    file_name = f"files{file_extension}"
-
-    # Process title and content
-    title, raw_title = clean_html_to_text(post_data["post"]["title"])
-    content, raw_content = clean_html_to_text(post_data["post"]["content"])
-
-    # Path to save the main file
     if config["save_info"]:
-        file_path = os.path.join(folder_path, file_name)
-        with open(file_path, "w", encoding="utf-8") as file:
-            # Formatted title
-            if file_format == "md":
-                file.write(f"# {title}\n\n")
-            else:
-                file.write(f"Title: {title}\n\n")
-
-            # Formatted content
-            file.write(f"{content}\n\n")
-
-            # Process poll if it exists
-            poll = post_data["post"].get("poll")
-            if poll:
-                if file_format == "md":
-                    file.write("## Poll Information\n\n")
-                    file.write(f"**Poll Title:** {poll.get('title', 'No Title')}\n")
-                    if poll.get("description"):
-                        file.write(f"\n**Description:** {poll['description']}\n")
-                    file.write(
-                        f"\n**Multiple Choices Allowed:** {'Yes' if poll.get('allows_multiple') else 'No'}\n"
-                    )
-                    file.write(f"**Started:** {poll.get('created_at', 'N/A')}\n")
-                    file.write(f"**Closes:** {poll.get('closes_at', 'N/A')}\n")
-                    file.write(f"**Total Votes:** {poll.get('total_votes', 0)}\n\n")
-
-                    # Poll choices
-                    file.write("### Choices and Votes\n\n")
-                    for choice in poll.get("choices", []):
-                        file.write(
-                            f"- **{choice['text']}:** {choice.get('votes', 0)} votes\n"
-                        )
-                else:
-                    file.write("Poll Information:\n\n")
-                    file.write(f"Poll Title: {poll.get('title', 'No Title')}\n")
-                    if poll.get("description"):
-                        file.write(f"Description: {poll['description']}\n")
-                    file.write(
-                        f"Multiple Choices Allowed: {'Yes' if poll.get('allows_multiple') else 'No'}\n"
-                    )
-                    file.write(f"Started: {poll.get('created_at', 'N/A')}\n")
-                    file.write(f"Closes: {poll.get('closes_at', 'N/A')}\n")
-                    file.write(f"Total Votes: {poll.get('total_votes', 0)}\n\n")
-
-                    file.write("Choices and Votes:\n")
-                    for choice in poll.get("choices", []):
-                        file.write(
-                            f"- {choice['text']}: {choice.get('votes', 0)} votes\n"
-                        )
-
-                file.write("\n")
-
-            # Process embed
-            embed = post_data["post"].get("embed")
-            if embed:
-                if file_format == "md":
-                    file.write("## Embedded Content\n")
-                else:
-                    file.write("Embedded Content:\n")
-                file.write(f"- URL: {embed.get('url', 'N/A')}\n")
-                file.write(f"- Subject: {embed.get('subject', 'N/A')}\n")
-                file.write(f"- Description: {embed.get('description', 'N/A')}\n")
-
-            # Separator
-            file.write("\n---\n\n")
-
-            # Raw Title and Content
-            if file_format == "md":
-                file.write("## Raw Title and Content\n\n")
-            else:
-                file.write("Raw Title and Content:\n\n")
-            file.write(f"Raw Title: {raw_title}\n\n")
-            file.write(f"Raw Content:\n{raw_content}\n\n")
-
-            # Process attachments
-            attachments = post_data.get("attachments", [])
-            if attachments:
-                if file_format == "md":
-                    file.write("## Attachments\n\n")
-                else:
-                    file.write("Attachments:\n\n")
-                for attach in attachments:
-                    server_url = f"{attach['server']}/data{attach['path']}?f={adapt_file_name(attach['name'])}"
-                    file.write(f"- {attach['name']}: {server_url}\n")
-
-            # Process videos
-            videos = post_data.get("videos", [])
-            if videos:
-                if file_format == "md":
-                    file.write("## Videos\n\n")
-                else:
-                    file.write("Videos:\n\n")
-                for video in videos:
-                    server_url = f"{video['server']}/data{video['path']}?f={adapt_file_name(video['name'])}"
-                    file.write(f"- {video['name']}: {server_url}\n")
-
-            # Process images
-            seen_paths = set()
-            images = []
-            for preview in post_data.get("previews", []):
-                if "name" in preview and "server" in preview and "path" in preview:
-                    server_url = f"{preview['server']}/data{preview['path']}"
-                    images.append((preview.get("name", ""), server_url))
-
-            if images:
-                if file_format == "md":
-                    file.write("## Images\n\n")
-                else:
-                    file.write("Images:\n\n")
-                for idx, (name, image_url) in enumerate(images, 1):
-                    if file_format == "md":
-                        file.write(f"![Image {idx}]({image_url}) - {name}\n")
-                    else:
-                        file.write(f"Image {idx}: {image_url} (Name: {name})\n")
+        save_post_info(post_data, folder_path, config["post_info"].lower())
 
     # Consolidate all files for download
     all_files_to_download = []
