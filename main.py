@@ -5,10 +5,11 @@ import re
 import json
 import time
 import importlib
+from typing import Dict, List, Optional, Any
 from urllib.parse import urlparse
 
 
-def install_requirements():
+def install_requirements() -> None:
     """Verify and install dependencies from requirements.txt."""
     requirements_file = "requirements.txt"
 
@@ -35,12 +36,12 @@ def install_requirements():
                     )
 
 
-def clear_screen():
+def clear_screen() -> None:
     """Clear console screen in a cross-platform compatible way"""
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def display_logo():
+def display_logo() -> None:
     """Display the project logo"""
     logo = """
  _  __                                                   
@@ -64,7 +65,7 @@ License: MIT License
     print(logo)
 
 
-def normalize_path(path):
+def normalize_path(path: str) -> str:
     """
     Normalize file path to handle non-ASCII characters
     """
@@ -98,7 +99,7 @@ def normalize_path(path):
         return path
 
 
-def run_download_script(json_path):
+def run_download_script(json_path: str) -> None:
     """Run the download script with the generated JSON and do detailed real-time tracking"""
     try:
         # Normalize the JSON path
@@ -225,7 +226,7 @@ def run_download_script(json_path):
         traceback.print_exc()
 
 
-def download_specific_posts():
+def download_specific_posts() -> None:
     """Option to download specific posts"""
     clear_screen()
     display_logo()
@@ -237,7 +238,7 @@ def download_specific_posts():
     print("3 - Back to the main menu")
     choice = input("\nEnter your choice (1/2/3): ")
 
-    links = []
+    links: List[str] = []
 
     if choice == "3":
         return
@@ -282,7 +283,7 @@ def download_specific_posts():
     input("\nPress Enter to continue...")
 
 
-def download_profile_posts():
+def download_profile_posts() -> None:
     """Option to download posts from a profile"""
     clear_screen()
     display_logo()
@@ -302,7 +303,7 @@ def download_profile_posts():
     profile_link = input("Paste the profile link: ")
 
     try:
-        json_path = None
+        json_path: Optional[str] = None
 
         if choice == "1":
             posts_process = subprocess.run(
@@ -391,13 +392,12 @@ def download_profile_posts():
     input("\nPress Enter to continue...")
 
 
-def customize_settings():
+def customize_settings() -> None:
     """Option to customize settings"""
     config_path = os.path.join("config", "conf.json")
-    import json
-
+    
     with open(config_path, "r") as f:
-        config = json.load(f)
+        config: Dict[str, Any] = json.load(f)
 
     while True:
         clear_screen()
@@ -436,7 +436,7 @@ def customize_settings():
         time.sleep(1)
 
 
-def main_menu():
+def main_menu() -> None:
     """Application main menu"""
     while True:
         clear_screen()
