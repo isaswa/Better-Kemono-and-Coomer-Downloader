@@ -3,12 +3,13 @@ import sys
 import json
 import requests
 import re
+from typing import Dict, List, Tuple, Optional, Any, Set
 from tqdm import tqdm
 from html.parser import HTMLParser
 from urllib.parse import quote, urlparse, unquote
 
 
-def load_config(config_path="config/conf.json"):
+def load_config(config_path: str = "config/conf.json") -> Dict[str, Any]:
     """
     Load configurations from conf.json file
     If the file doesn't exist, return default configurations
@@ -40,24 +41,24 @@ def load_config(config_path="config/conf.json"):
         }
 
 
-def ensure_directory(path):
+def ensure_directory(path: str) -> None:
     if not os.path.exists(path):
         os.makedirs(path)
 
 
-def load_profiles(path):
+def load_profiles(path: str) -> Dict[str, Any]:
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as file:
             return json.load(file)
     return {}
 
 
-def save_profiles(path, profiles):
+def save_profiles(path: str, profiles: Dict[str, Any]) -> None:
     with open(path, "w", encoding="utf-8") as file:
         json.dump(profiles, file, indent=4)
 
 
-def extract_data_from_link(link):
+def extract_data_from_link(link: str) -> Tuple[str, str, str, str]:
     """
     Extract service, user_id, and post_id from both kemono.su and coomer.su links
     """
@@ -74,14 +75,14 @@ def extract_data_from_link(link):
     return domain, service, user_id, post_id
 
 
-def get_api_base_url(domain):
+def get_api_base_url(domain: str) -> str:
     """
     Dynamically generate API base URL based on the domain
     """
     return f"https://{domain}.su/api/v1/"
 
 
-def fetch_profile(domain, service, user_id):
+def fetch_profile(domain: str, service: str, user_id: str) -> Dict[str, Any]:
     """
     Fetch user profile with dynamic domain support
     """
@@ -92,7 +93,7 @@ def fetch_profile(domain, service, user_id):
     return response.json()
 
 
-def fetch_post(domain, service, user_id, post_id):
+def fetch_post(domain: str, service: str, user_id: str, post_id: str) -> Dict[str, Any]:
     """
     Fetch post data with dynamic domain support
     """
@@ -107,13 +108,13 @@ def fetch_post(domain, service, user_id, post_id):
 class HTMLToMarkdown(HTMLParser):
     """Parser to convert HTML content to Markdown and plain text."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.result = []
-        self.raw_content = []
-        self.current_link = None
+        self.result: List[str] = []
+        self.raw_content: List[str] = []
+        self.current_link: Optional[str] = None
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         if tag == "a":
             href = dict(attrs).get("href", "")
             self.current_link = href
@@ -122,13 +123,13 @@ class HTMLToMarkdown(HTMLParser):
             self.result.append("\n")  # New line for Markdown
         self.raw_content.append(self.get_starttag_text())
 
-    def handle_endtag(self, tag):
+    def handle_endtag(self, tag: str) -> None:
         if tag == "a" and self.current_link:
             self.result.append(f"]({self.current_link})")
             self.current_link = None
         self.raw_content.append(f"</{tag}>")
 
-    def handle_data(self, data):
+    def handle_data(self, data: str) -> None:
         # Append visible text to the Markdown result
         if self.current_link:
             self.result.append(data.strip())
@@ -137,23 +138,23 @@ class HTMLToMarkdown(HTMLParser):
         # Append all raw content for reference
         self.raw_content.append(data)
 
-    def get_markdown(self):
+    def get_markdown(self) -> str:
         """Return the cleaned Markdown content."""
         return "".join(self.result).strip()
 
-    def get_raw_content(self):
+    def get_raw_content(self) -> str:
         """Return the raw HTML content."""
         return "".join(self.raw_content).strip()
 
 
-def clean_html_to_text(html):
+def clean_html_to_text(html: str) -> Tuple[str, str]:
     """Converts HTML to Markdown and extracts raw HTML."""
     parser = HTMLToMarkdown()
     parser.feed(html)
     return parser.get_markdown(), parser.get_raw_content()
 
 
-def adapt_file_name(name):
+def adapt_file_name(name: str) -> str:
     """
     Sanitize file name by removing special characters and reducing its size.
     """
@@ -161,14 +162,20 @@ def adapt_file_name(name):
     return sanitized[:50]  # Limit length to 50 characters
 
 
-def download_files(file_list, folder_path, config):
+def download_files(
+    file_list: List[Tuple[str, str]], folder_path: str, config: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Download files from a list of URLs and save them with unique names in the folder_path.
 
     :param file_list: List of tuples with original name and URL [(name, url), ...]
     :param folder_path: Directory to save downloaded files
+    :param config: Configuration dictionary
+    :return: Dictionary with download results {'success_count': int, 'failed_files': [{'name': str, 'url': str, 'error': str}]}
     """
-    seen_files = set()
+    seen_files: Set[str] = set()
+    failed_files: List[Dict[str, str]] = []
+    success_count: int = 0
 
     for idx, (original_name, url) in enumerate(file_list, start=1):
         # Check if URL is from allowed domains
@@ -205,6 +212,7 @@ def download_files(file_list, folder_path, config):
 
         if config["skip_existed_files"] and os.path.exists(file_path):
             print(f"Skipped (existed): {file_name}")
+            success_count += 1
             continue
 
         # Download the file
@@ -226,14 +234,22 @@ def download_files(file_list, folder_path, config):
                 raise RuntimeError("internal error: failed to download whole file ")
 
             print(f"Downloaded: {file_name}")
+            success_count += 1
         except Exception as err:
-            # TODO: record failed downloads and return result as partially failed
-
+            failed_files.append({"name": file_name, "url": url, "error": str(err)})
             print(f"Download failed {url}:")
             print(err)
 
+    return {
+        "success_count": success_count,
+        "failed_files": failed_files,
+        "total_files": len(file_list),
+    }
 
-def save_post_info(post_data, folder_path, file_format):
+
+def save_post_info(
+    post_data: Dict[str, Any], folder_path: str, file_format: str
+) -> None:
     """
     Save post information to a file (title, content, polls, embeds, and file links).
 
@@ -350,7 +366,9 @@ def save_post_info(post_data, folder_path, file_format):
                     file.write(f"Image {idx}: {image_url} (Name: {name})\n")
 
 
-def save_post_content(post_data, folder_path, config):
+def save_post_content(
+    post_data: Dict[str, Any], folder_path: str, config: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Save post content and download files based on configuration settings.
     Now includes support for poll data if present.
@@ -358,6 +376,8 @@ def save_post_content(post_data, folder_path, config):
     :param post_data: Dictionary containing post information
     :param folder_path: Path to save the post files
     :param config: Configuration dictionary with 'post_info' and 'save_info' keys
+
+    :return: Dictionary with download results from download_files
     """
     ensure_directory(folder_path)
 
@@ -387,16 +407,18 @@ def save_post_content(post_data, folder_path, config):
         {url: (name, url) for name, url in all_files_to_download}.values()
     )
 
-    # Download files to the specified folder
-    download_files(unique_files_to_download, folder_path, config)
+    # Download files to the specified folder and get results
+    download_result = download_files(unique_files_to_download, folder_path, config)
+
+    return download_result
 
 
-def sanitize_filename(value):
+def sanitize_filename(value: str) -> str:
     """Remove characters that can break folder creation."""
     return value.replace("/", "_").replace("\\", "_")
 
 
-def main():
+def main() -> None:
     # Load configurations
     config = load_config()
 
@@ -456,9 +478,24 @@ def main():
             post_data = fetch_post(domain, service, user_id, post_id)
 
             # Save post content using configurations
-            save_post_content(post_data, post_folder, config)
+            download_result = save_post_content(post_data, post_folder, config)
 
-            print(f"\n✅ Link processed successfully: {user_link}")
+            # Handle download results
+            if download_result["failed_files"]:
+                print(
+                    f"\n⚠️ Link processed with {len(download_result['failed_files'])} failed downloads:",
+                    f"{user_link}",
+                    sep="\n",
+                )
+                print(
+                    f"✅ Successfully downloaded: {download_result['success_count']}/{download_result['total_files']} files"
+                )
+                print("❌ Failed downloads:")
+                for failed in download_result["failed_files"]:
+                    print(f"  - {failed['name']}")
+            else:
+                print(f"\n✅ Link processed successfully: {user_link}")
+                print(f"✅ Downloaded all {download_result['success_count']} files")
 
         except Exception as e:
             print(f"❌ Error processing link {user_link}: {e}")

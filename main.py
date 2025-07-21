@@ -379,7 +379,6 @@ def download_profile_posts():
                     json_path = line.strip()
                     break
 
-        # If a JSON was generated, run the download script
         if json_path:
             run_download_script(json_path)
         else:
@@ -397,7 +396,6 @@ def customize_settings():
     config_path = os.path.join("config", "conf.json")
     import json
 
-    # Load the configuration file
     with open(config_path, "r") as f:
         config = json.load(f)
 
@@ -425,15 +423,12 @@ def customize_settings():
         elif choice == "3":
             config["save_info"] = not config["save_info"]
         elif choice == "4":
-            # Toggle between "md" and "txt"
             config["post_info"] = "txt" if config["post_info"] == "md" else "md"
         elif choice == "5":
-            # Exit the settings menu
             break
         else:
             print("Invalid option. Please try again.")
 
-        # Save the configurations to file
         with open(config_path, "w") as f:
             json.dump(config, f, indent=4)
 

@@ -2,21 +2,22 @@ import os
 import sys
 import json
 import requests
+from typing import Dict, List, Tuple, Optional, Any, Union, Callable
 from datetime import datetime
 
-def save_json(file_path, data):
+def save_json(file_path: str, data: Any) -> None:
     """Helper function to save JSON files with UTF-8 encoding and pretty formatting"""
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
-def load_config(file_path):
+def load_config(file_path: str) -> Dict[str, Any]:
     """Load configuration from a JSON file."""
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}  # Return an empty dictionary if the file doesn't exist
 
-def get_base_config(profile_url):
+def get_base_config(profile_url: str) -> Tuple[str, str, str]:
     """
     Dynamically configure base URLs and directories based on the profile URL domain
     """
@@ -32,7 +33,7 @@ def get_base_config(profile_url):
     
     return BASE_API_URL, BASE_SERVER, BASE_DIR
 
-def is_offset(value):
+def is_offset(value: str) -> bool:
     """Determine if the value is an offset (up to 5 digits) or an ID."""
     try:
         # Try to convert to integer and check the length
@@ -41,7 +42,7 @@ def is_offset(value):
         # If not a number, it's not an offset
         return False
 
-def parse_fetch_mode(fetch_mode, total_count):
+def parse_fetch_mode(fetch_mode: str, total_count: int) -> List[Union[int, str]]:
     """
     Parse the fetch mode and return the corresponding offsets
     """
@@ -87,21 +88,21 @@ def parse_fetch_mode(fetch_mode, total_count):
     
     raise ValueError(f"Invalid fetch mode: {fetch_mode}")
 
-def get_artist_info(profile_url):
+def get_artist_info(profile_url: str) -> Tuple[str, str]:
     # Extract service and user_id from URL
     parts = profile_url.split("/")
     service = parts[-3]
     user_id = parts[-1]
     return service, user_id
 
-def fetch_posts(base_api_url, service, user_id, offset=0):
+def fetch_posts(base_api_url: str, service: str, user_id: str, offset: int = 0) -> Dict[str, Any]:
     # Fetch posts from API
     url = f"{base_api_url}/{service}/user/{user_id}/posts-legacy?o={offset}"
     response = requests.get(url)
     response.raise_for_status()
     return response.json()
 
-def save_json_incrementally(file_path, new_posts, start_offset, end_offset):
+def save_json_incrementally(file_path: str, new_posts: List[Dict[str, Any]], start_offset: int, end_offset: int) -> None:
     # Create a new dictionary with current posts
     data = {
         "total_posts": len(new_posts),
@@ -112,7 +113,9 @@ def save_json_incrementally(file_path, new_posts, start_offset, end_offset):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
-def process_posts(posts, previews, attachments_data, page_number, offset, base_server, save_empty_files=True, id_filter=None):
+def process_posts(posts: List[Dict[str, Any]], previews: List[Dict[str, Any]], attachments_data: List[Dict[str, Any]], 
+                  page_number: int, offset: int, base_server: str, save_empty_files: bool = True, 
+                  id_filter: Optional[Callable[[str], bool]] = None) -> List[Dict[str, Any]]:
     # Process posts and organize file links
     processed = []
     for post in posts:
@@ -164,11 +167,11 @@ def process_posts(posts, previews, attachments_data, page_number, offset, base_s
 
     return processed
 
-def sanitize_filename(value):
+def sanitize_filename(value: str) -> str:
     """Remove characters that can break folder creation."""
     return value.replace("/", "_").replace("\\", "_")
 
-def main():
+def main() -> None:
     # Check command line arguments
     if len(sys.argv) < 2 or len(sys.argv) > 3:
         print("Usage: python posts.py <profile_url> [fetch_mode]")

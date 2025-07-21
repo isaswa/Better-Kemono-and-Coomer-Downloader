@@ -3,22 +3,23 @@ import json
 import re
 import time
 import requests
+from typing import Dict, List, Tuple, Any
 from concurrent.futures import ThreadPoolExecutor
 import sys
 
-def load_config(file_path):
+def load_config(file_path: str) -> Dict[str, Any]:
     """Load configuration from a JSON file."""
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}  # Return an empty dictionary if the file doesn't exist
 
-def sanitize_filename(filename):
+def sanitize_filename(filename: str) -> str:
     """Sanitize filename by removing invalid characters and replacing spaces with underscores."""
     filename = re.sub(r'[\\/*?\"<>|]', '', filename)
     return filename.replace(' ', '_')
 
-def download_file(file_url, save_path):
+def download_file(file_url: str, save_path: str) -> None:
     """Download a file from a URL and save it to the specified path."""
     try:
         response = requests.get(file_url, stream=True)
@@ -30,7 +31,7 @@ def download_file(file_url, save_path):
     except Exception as e:
         print(f"Download failed {file_url}: {e}")
 
-def process_post(post, base_folder):
+def process_post(post: Dict[str, Any], base_folder: str) -> None:
     """Process a single post, downloading its files."""
     post_id = post.get("id")
     post_folder = os.path.join(base_folder, post_id)
@@ -39,7 +40,7 @@ def process_post(post, base_folder):
     print(f"Processing post ID {post_id}")
 
     # Prepare downloads for this post
-    downloads = []
+    downloads: List[Tuple[str, str]] = []
     for file_index, file in enumerate(post.get("files", []), start=1):
         original_name = file.get("name")
         file_url = file.get("url")
@@ -55,7 +56,7 @@ def process_post(post, base_folder):
 
     print(f"Post {post_id} downloaded")
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python down.py {json_path}")
         sys.exit(1)
