@@ -7,12 +7,7 @@ from typing import Dict, List, Tuple, Any
 from concurrent.futures import ThreadPoolExecutor
 import sys
 
-def load_config(file_path: str) -> Dict[str, Any]:
-    """Load configuration from a JSON file."""
-    if os.path.exists(file_path):
-        with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}  # Return an empty dictionary if the file doesn't exist
+from .config import load_config, Config
 
 def sanitize_filename(filename: str) -> str:
     """Sanitize filename by removing invalid characters and replacing spaces with underscores."""
@@ -77,14 +72,11 @@ def main() -> None:
     base_folder = os.path.join(os.path.dirname(json_file_path), "posts")
     os.makedirs(base_folder, exist_ok=True)
 
-    # Path to configuration file
-    config_file_path = os.path.join("config", "conf.json")
-
     # Load configuration from JSON file
-    config = load_config(config_file_path)
+    config = load_config()
 
     # Get the value of 'process_from_oldest' from configuration
-    process_from_oldest = config.get("process_from_oldest", True)  # Default value is True
+    process_from_oldest = config.process_from_oldest
 
     posts = data.get("posts", [])
     if process_from_oldest:

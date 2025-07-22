@@ -8,8 +8,9 @@ import importlib
 from typing import Dict, List, Optional, Any
 from urllib.parse import urlparse
 
-from src.kcposts import process_posts
-from src.posts import extract_posts
+from src.post_extractor import extract_posts
+from src.post_downloader import process_posts
+from src.config import load_config, save_config, Config
 
 
 def install_requirements() -> None:
@@ -114,9 +115,7 @@ def run_download_script(json_path: str) -> None:
             return
 
         # Read configurations
-        config_path = normalize_path(os.path.join("config", "conf.json"))
-        with open(config_path, "r", encoding="utf-8") as config_file:
-            config = json.load(config_file)
+        config = load_config()
 
         # Read the posts JSON
         with open(json_path, "r", encoding="utf-8") as posts_file:
@@ -135,7 +134,7 @@ def run_download_script(json_path: str) -> None:
         print("Starting post downloads")
 
         # Determine processing order
-        if config["process_from_oldest"]:
+        if config.process_from_oldest:
             post_ids = sorted(post_ids)  # Order from oldest to newest
         else:
             post_ids = sorted(post_ids, reverse=True)  # Order from newest to oldest
@@ -271,7 +270,6 @@ def download_specific_posts() -> None:
         try:
             domain = urlparse(link).netloc
             if domain == "kemono.su" or domain == "coomer.su":
-                # Call process_posts directly with the link parameter
                 process_posts([link])
             else:
                 print(f"Domain not supported: {domain}")
@@ -360,42 +358,39 @@ def download_profile_posts() -> None:
 def customize_settings() -> None:
     """Option to customize settings"""
     config_path = os.path.join("config", "conf.json")
-
-    with open(config_path, "r") as f:
-        config: Dict[str, Any] = json.load(f)
+    config: Config = load_config()
 
     while True:
         clear_screen()
         display_logo()
         print("Customize Settings")
         print("------------------------")
-        print(f"1 - Take empty posts: {config['get_empty_posts']}")
-        print(f"2 - Download older posts first: {config['process_from_oldest']}")
+        print(f"1 - Take empty posts: {config.get_empty_posts}")
+        print(f"2 - Download older posts first: {config.process_from_oldest}")
         print(
-            f"3 - For individual posts, create a file with information (title, description, etc.): {config['save_info']}"
+            f"3 - For individual posts, create a file with information (title, description, etc.): {config.save_info}"
         )
         print(
-            f"4 - Choose the type of file to save the information (Markdown or TXT): {config['post_info']}"
+            f"4 - Choose the type of file to save the information (Markdown or TXT): {config.post_info}"
         )
         print("5 - Back to the main menu")
 
         choice = input("\nChoose an option (1/2/3/4/5): ")
 
         if choice == "1":
-            config["get_empty_posts"] = not config["get_empty_posts"]
+            config.get_empty_posts = not config.get_empty_posts
         elif choice == "2":
-            config["process_from_oldest"] = not config["process_from_oldest"]
+            config.process_from_oldest = not config.process_from_oldest
         elif choice == "3":
-            config["save_info"] = not config["save_info"]
+            config.save_info = not config.save_info
         elif choice == "4":
-            config["post_info"] = "txt" if config["post_info"] == "md" else "md"
+            config.post_info = "txt" if config.post_info == "md" else "md"
         elif choice == "5":
             break
         else:
             print("Invalid option. Please try again.")
 
-        with open(config_path, "w") as f:
-            json.dump(config, f, indent=4)
+        save_config(config, config_path)
 
         print("\nUpdated configurations.")
         time.sleep(1)

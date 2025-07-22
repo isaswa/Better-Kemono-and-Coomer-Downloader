@@ -5,19 +5,13 @@ import requests
 from typing import Dict, List, Tuple, Optional, Any, Union, Callable
 from datetime import datetime
 
+from .config import load_config, Config
+
 
 def save_json(file_path: str, data: Any) -> None:
     """Helper function to save JSON files with UTF-8 encoding and pretty formatting"""
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
-
-
-def load_config(file_path: str) -> Dict[str, Any]:
-    """Load configuration from a JSON file."""
-    if os.path.exists(file_path):
-        with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}  # Return an empty dictionary if the file doesn't exist
 
 
 def get_base_config(profile_url: str) -> Tuple[str, str, str]:
@@ -200,13 +194,10 @@ def extract_posts(profile_url: str, fetch_mode: str = "all") -> str:
     """
 
     # Load configuration from JSON file
-    config_file_path = os.path.join("config", "conf.json")
-    config = load_config(config_file_path)
+    config = load_config()
 
-    # Get the value of 'process_from_oldest' from configuration
-    SAVE_EMPTY_FILES = config.get(
-        "get_empty_posts", False
-    )  # Change to True if you want to save posts without files
+    # Get the value of 'get_empty_posts' from configuration
+    SAVE_EMPTY_FILES = config.get_empty_posts
 
     # Configure base URLs dynamically
     BASE_API_URL, BASE_SERVER, BASE_DIR = get_base_config(profile_url)

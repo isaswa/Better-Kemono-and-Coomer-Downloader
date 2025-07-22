@@ -8,46 +8,7 @@ from tqdm import tqdm
 from html.parser import HTMLParser
 from urllib.parse import quote, urlparse, unquote
 
-
-def load_config(config_path: str = "config/conf.json") -> Dict[str, Any]:
-    """
-    Load configurations from conf.json file
-    If the file doesn't exist, return default configurations
-    """
-    try:
-        with open(config_path, "r") as file:
-            config = json.load(file)
-        return {
-            # Boolean fields
-            "save_info": config.get("save_info", False),
-            "save_preview": config.get("save_preview", False),
-            "skip_existed_files": config.get("skip_existed_files", True),
-            # ---
-            # "md" or "txt"
-            "post_info": config.get("post_info", "md"),
-            # "id" or "title"
-            "post_folder_name": config.get("post_folder_name", "id"),
-        }
-    # Default configurations if file doesn't exist
-    except FileNotFoundError:
-        return {
-            "save_info": False,
-            "save_preview": False,
-            "skip_existed_files": True,
-            # ---
-            "post_info": "md",
-            "post_folder_name": "id",
-        }
-    except json.JSONDecodeError:
-        print(f"Error decoding {config_path}. Using default settings.")
-        return {
-            "save_info": False,
-            "save_preview": False,
-            "skip_existed_files": True,
-            # ---
-            "post_info": "md",
-            "post_folder_name": "id",
-        }
+from .config import load_config, Config
 
 
 def ensure_directory(path: str) -> None:
@@ -172,7 +133,7 @@ def adapt_file_name(name: str) -> str:
 
 
 def download_files(
-    file_list: List[Tuple[str, str]], folder_path: str, config: Dict[str, Any]
+    file_list: List[Tuple[str, str]], folder_path: str, config: Config
 ) -> Dict[str, Any]:
     """
     Download files from a list of URLs and save them with unique names in the folder_path.
@@ -219,7 +180,7 @@ def download_files(
         seen_files.add(file_name)
         file_path = os.path.join(folder_path, file_name)
 
-        if config["skip_existed_files"] and os.path.exists(file_path):
+        if config.skip_existed_files and os.path.exists(file_path):
             try:
                 # Check if existing file size matches expected size
                 existing_size = os.path.getsize(file_path)
@@ -390,7 +351,7 @@ def save_post_info(
 
 
 def save_post_content(
-    post_data: Dict[str, Any], folder_path: str, config: Dict[str, Any]
+    post_data: Dict[str, Any], folder_path: str, config: Config
 ) -> Dict[str, Any]:
     """
     Save post content and download files based on configuration settings.
@@ -404,8 +365,8 @@ def save_post_content(
     """
     ensure_directory(folder_path)
 
-    if config["save_info"]:
-        save_post_info(post_data, folder_path, config["post_info"].lower())
+    if config.save_info:
+        save_post_info(post_data, folder_path, config.post_info.lower())
 
     # Consolidate all files for download
     all_files_to_download = []
@@ -530,10 +491,13 @@ def process_posts(links: List[str]) -> None:
             post_data = fetch_post(domain, service, user_id, post_id)
 
             # Decide folder name based on config setting
-            if config["post_folder_name"] == "title":
+            if config.post_folder_name == "title":
                 post_title = get_post_title(post_data)
                 # Prevent duplicated title
                 folder_name = f"{post_title}_{post_id}"
+
+                # TODO: check if there are old folders that its name is just "{post_id}"
+                # if such folder exists, rename it into the new form
             else:
                 folder_name = post_id
 
