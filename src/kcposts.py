@@ -18,26 +18,35 @@ def load_config(config_path: str = "config/conf.json") -> Dict[str, Any]:
         with open(config_path, "r") as file:
             config = json.load(file)
         return {
-            "post_info": config.get("post_info", "md"),
+            # Boolean fields
             "save_info": config.get("save_info", False),
             "save_preview": config.get("save_preview", False),
             "skip_existed_files": config.get("skip_existed_files", True),
+            # ---
+            # "md" or "txt"
+            "post_info": config.get("post_info", "md"),
+            # "id" or "title"
+            "post_folder_name": config.get("post_folder_name", "id"),
         }
     # Default configurations if file doesn't exist
     except FileNotFoundError:
         return {
-            "post_info": "md",
             "save_info": False,
             "save_preview": False,
             "skip_existed_files": True,
+            # ---
+            "post_info": "md",
+            "post_folder_name": "id",
         }
     except json.JSONDecodeError:
         print(f"Error decoding {config_path}. Using default settings.")
         return {
-            "post_info": "md",
             "save_info": False,
             "save_preview": False,
             "skip_existed_files": True,
+            # ---
+            "post_info": "md",
+            "post_folder_name": "id",
         }
 
 
@@ -211,9 +220,23 @@ def download_files(
         file_path = os.path.join(folder_path, file_name)
 
         if config["skip_existed_files"] and os.path.exists(file_path):
-            print(f"Skipped (existed): {file_name}")
-            success_count += 1
-            continue
+            try:
+                # Check if existing file size matches expected size
+                existing_size = os.path.getsize(file_path)
+                response = requests.head(url, timeout=10)
+                expected_size = int(response.headers.get("content-length", 0))
+
+                if expected_size > 0 and existing_size == expected_size:
+                    print(f"Skipped (complete): {file_name}")
+                    success_count += 1
+                    continue
+                elif expected_size > 0:
+                    print(
+                        f"Re-downloading (incomplete): {file_name} ({existing_size}/{expected_size} bytes)"
+                    )
+            except Exception:
+                # proceed with download If cannot check
+                pass
 
         # Download the file
         block_size = 8192
@@ -418,6 +441,49 @@ def sanitize_filename(value: str) -> str:
     return value.replace("/", "_").replace("\\", "_")
 
 
+def get_post_title(post_data: Dict[str, Any]) -> str:
+    """
+    Extract the post title from post_data.
+    Return empty string if failed to get the title.
+    """
+    try:
+        title = post_data.get("post", {}).get("title", "")
+        return title
+    except Exception:
+        return ""
+
+
+def load_failed_downloads(file_path: str = "failed_downloads.txt") -> Set[str]:
+    """Load failed download links from file."""
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            return set(line.strip() for line in f if line.strip())
+    return set()
+
+
+def save_failed_downloads(
+    failed_links: Set[str], file_path: str = "failed_downloads.txt"
+) -> None:
+    """Save failed download links to file."""
+    with open(file_path, "w", encoding="utf-8") as f:
+        for link in sorted(failed_links):
+            f.write(f"{link}\n")
+
+
+def add_failed_download(link: str, file_path: str = "failed_downloads.txt") -> None:
+    """Add a failed download link to the file."""
+    failed_links = load_failed_downloads(file_path)
+    failed_links.add(link)
+    save_failed_downloads(failed_links, file_path)
+
+
+def remove_failed_download(link: str, file_path: str = "failed_downloads.txt") -> None:
+    """Remove a successful download link from the failed downloads file."""
+    failed_links = load_failed_downloads(file_path)
+    failed_links.discard(link)
+    save_failed_downloads(failed_links, file_path)
+
+
 def main() -> None:
     # Load configurations
     config = load_config()
@@ -471,11 +537,19 @@ def main() -> None:
             posts_folder = os.path.join(user_folder, "posts")
             ensure_directory(posts_folder)
 
-            post_folder = os.path.join(posts_folder, post_id)
-            ensure_directory(post_folder)
-
             # Fetch post data
             post_data = fetch_post(domain, service, user_id, post_id)
+
+            # Decide folder name based on config setting
+            if config["post_folder_name"] == "title":
+                post_title = get_post_title(post_data)
+                # Prevent duplicated title
+                folder_name = f"{post_title}_{post_id}"
+            else:
+                folder_name = post_id
+
+            post_folder = os.path.join(posts_folder, folder_name)
+            ensure_directory(post_folder)
 
             # Save post content using configurations
             download_result = save_post_content(post_data, post_folder, config)
@@ -493,9 +567,13 @@ def main() -> None:
                 print("❌ Failed downloads:")
                 for failed in download_result["failed_files"]:
                     print(f"  - {failed['name']}")
+
+                add_failed_download(user_link)
             else:
                 print(f"\n✅ Link processed successfully: {user_link}")
                 print(f"✅ Downloaded all {download_result['success_count']} files")
+
+                remove_failed_download(user_link)
 
         except Exception as e:
             print(f"❌ Error processing link {user_link}: {e}")

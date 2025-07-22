@@ -4,5 +4,6 @@
     "post_info": "md",
     "save_info": false,
     "save_preview": false,
-    "skip_existed_files": true
+    "skip_existed_files": true,
+    "post_folder_name": "title"
 }
