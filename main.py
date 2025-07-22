@@ -274,7 +274,7 @@ def download_specific_posts() -> None:
                 continue
 
             # Execute the specific script for the domain
-            subprocess.run(["python", script_path, link], check=True)
+            subprocess.run(["python", script_path, link], check=True, encoding="utf-8")
         except IndexError:
             print(f"Link format error: {link}")
         except subprocess.CalledProcessError:
@@ -329,6 +329,7 @@ def download_profile_posts() -> None:
                 ["python", os.path.join("src", "posts.py"), profile_link, page],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 check=True,
             )
             for line in posts_process.stdout.split("\n"):
@@ -348,6 +349,7 @@ def download_profile_posts() -> None:
                 ],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 check=True,
             )
             for line in posts_process.stdout.split("\n"):
@@ -373,6 +375,7 @@ def download_profile_posts() -> None:
                 ],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 check=True,
             )
             for line in posts_process.stdout.split("\n"):
