@@ -8,6 +8,9 @@ import importlib
 from typing import Dict, List, Optional, Any
 from urllib.parse import urlparse
 
+from src.kcposts import process_posts
+from src.posts import extract_posts
+
 
 def install_requirements() -> None:
     """Verify and install dependencies from requirements.txt."""
@@ -268,17 +271,16 @@ def download_specific_posts() -> None:
         try:
             domain = urlparse(link).netloc
             if domain == "kemono.su" or domain == "coomer.su":
-                script_path = os.path.join("src", "kcposts.py")
+                # Call process_posts directly with the link parameter
+                process_posts([link])
             else:
                 print(f"Domain not supported: {domain}")
                 continue
-
-            # Execute the specific script for the domain
-            subprocess.run(["python", script_path, link], check=True, encoding="utf-8")
         except IndexError:
             print(f"Link format error: {link}")
-        except subprocess.CalledProcessError:
+        except Exception as e:
             print(f"Error downloading the post: {link}")
+            print(str(e))
 
     input("\nPress Enter to continue...")
 
@@ -306,56 +308,28 @@ def download_profile_posts() -> None:
         json_path: Optional[str] = None
 
         if choice == "1":
-            posts_process = subprocess.run(
-                ["python", os.path.join("src", "posts.py"), profile_link, "all"],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",  # Ensure output is correctly decoded
-                check=True,
-            )
-
-            # Check if stdout contains data
-            if posts_process.stdout:
-                for line in posts_process.stdout.split("\n"):
-                    if line.endswith(".json"):
-                        json_path = line.strip()
-                        break
-            else:
-                print("No output from the sub-process.")
+            try:
+                json_path = extract_posts(profile_link, "all")
+            except Exception as e:
+                print(f"Error generating JSON: {e}")
+                json_path = None
 
         elif choice == "2":
             page = input("Enter the page number (0 = first page, 50 = second, etc.): ")
-            posts_process = subprocess.run(
-                ["python", os.path.join("src", "posts.py"), profile_link, page],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                check=True,
-            )
-            for line in posts_process.stdout.split("\n"):
-                if line.endswith(".json"):
-                    json_path = line.strip()
-                    break
+            try:
+                json_path = extract_posts(profile_link, page)
+            except Exception as e:
+                print(f"Error generating JSON: {e}")
+                json_path = None
 
         elif choice == "3":
             start_page = input("Enter the start page (start, 0, 50, 100, etc.): ")
             end_page = input("Enter the final page (or use end, 300, 350, 400): ")
-            posts_process = subprocess.run(
-                [
-                    "python",
-                    os.path.join("src", "posts.py"),
-                    profile_link,
-                    f"{start_page}-{end_page}",
-                ],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                check=True,
-            )
-            for line in posts_process.stdout.split("\n"):
-                if line.endswith(".json"):
-                    json_path = line.strip()
-                    break
+            try:
+                json_path = extract_posts(profile_link, f"{start_page}-{end_page}")
+            except Exception as e:
+                print(f"Error generating JSON: {e}")
+                json_path = None
 
         elif choice == "4":
             first_post = input("Paste the link or ID of the first post: ")
@@ -366,31 +340,19 @@ def download_profile_posts() -> None:
                 second_post.split("/")[-1] if "/" in second_post else second_post
             )
 
-            posts_process = subprocess.run(
-                [
-                    "python",
-                    os.path.join("src", "posts.py"),
-                    profile_link,
-                    f"{first_id}-{second_id}",
-                ],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                check=True,
-            )
-            for line in posts_process.stdout.split("\n"):
-                if line.endswith(".json"):
-                    json_path = line.strip()
-                    break
+            try:
+                json_path = extract_posts(profile_link, f"{first_id}-{second_id}")
+            except Exception as e:
+                print(f"Error generating JSON: {e}")
+                json_path = None
 
         if json_path:
             run_download_script(json_path)
         else:
             print("The JSON path could not be found.")
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error generating JSON: {e}")
-        print(e.stderr)
+    except Exception as e:
+        print(f"Error in profile processing: {e}")
 
     input("\nPress Enter to continue...")
 
@@ -398,7 +360,7 @@ def download_profile_posts() -> None:
 def customize_settings() -> None:
     """Option to customize settings"""
     config_path = os.path.join("config", "conf.json")
-    
+
     with open(config_path, "r") as f:
         config: Dict[str, Any] = json.load(f)
 

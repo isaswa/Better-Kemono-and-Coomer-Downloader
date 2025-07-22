@@ -194,26 +194,13 @@ def sanitize_filename(value: str) -> str:
     return value.replace("/", "_").replace("\\", "_")
 
 
-def main() -> None:
-    # Check command line arguments
-    if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print("Usage: python posts.py <profile_url> [fetch_mode]")
-        print("Possible fetch modes:")
-        print("- all")
-        print("- <page number>")
-        print("- start-end")
-        print("- <start_id>-<end_id>")
-        sys.exit(1)
-
-    # Define profile_url from argument
-    profile_url = sys.argv[1]
-
-    # Define FETCH_MODE (default to "all" if not specified)
-    FETCH_MODE = sys.argv[2] if len(sys.argv) == 3 else "all"
-
-    config_file_path = os.path.join("config", "conf.json")
+def extract_posts(profile_url: str, fetch_mode: str = "all") -> str:
+    """
+    Return the full path of the generated JSON file with process post data
+    """
 
     # Load configuration from JSON file
+    config_file_path = os.path.join("config", "conf.json")
     config = load_config(config_file_path)
 
     # Get the value of 'process_from_oldest' from configuration
@@ -268,7 +255,7 @@ def main() -> None:
     today = datetime.now().strftime("%Y-%m-%d")
 
     try:
-        offsets = parse_fetch_mode(FETCH_MODE, count)
+        offsets = parse_fetch_mode(fetch_mode, count)
     except ValueError as e:
         print(e)
         return
@@ -336,9 +323,4 @@ def main() -> None:
                     print(f"Found both IDs: {id1} and {id2}")
                     break
 
-    # Print the full path of the generated JSON file
-    print(f"{os.path.abspath(file_path)}")
-
-
-if __name__ == "__main__":
-    main()
+    return os.path.abspath(file_path)

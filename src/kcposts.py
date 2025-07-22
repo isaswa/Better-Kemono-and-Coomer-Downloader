@@ -484,20 +484,9 @@ def remove_failed_download(link: str, file_path: str = "failed_downloads.txt") -
     save_failed_downloads(failed_links, file_path)
 
 
-def main() -> None:
+def process_posts(links: List[str]) -> None:
     # Load configurations
     config = load_config()
-
-    # Check if links were passed via command line
-    if len(sys.argv) < 2:
-        print("Please provide at least one link as an argument.")
-        print(
-            "Example: python kcposts.py https://kemono.su/link1, https://coomer.su/link2"
-        )
-        sys.exit(1)
-
-    # Process each link passed
-    links = sys.argv[1:]
 
     for user_link in links:
         try:
@@ -577,11 +566,5 @@ def main() -> None:
 
         except Exception as e:
             print(f"❌ Error processing link {user_link}: {e}")
-            import traceback
-
-            traceback.print_exc()
-            continue  # Continue processing next links even if one fails
-
-
-if __name__ == "__main__":
-    main()
+            # Continue processing next links even if one fails
+            continue
