@@ -5,3 +5,5 @@ failed_downloads.txt
 
 CLAUDE.md
 .claude
+
+*__pycache__*

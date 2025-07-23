@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 from src.post_extractor import extract_posts
 from src.post_downloader import process_posts
+from src.batch_file_downloader import batch_download_posts
 from src.config import load_config, save_config, Config
 
 
@@ -171,28 +172,7 @@ def run_download_script(json_path: str) -> None:
                     continue
 
                 try:
-                    # Normalize download script path
-                    download_script = normalize_path(os.path.join("src", "down.py"))
-
-                    # Use subprocess.Popen with normalized path and Unicode support
-                    download_process = subprocess.Popen(
-                        [sys.executable, download_script, json_path, post_id],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        universal_newlines=True,
-                        encoding="utf-8",
-                    )
-
-                    # Capture and print output in real time
-                    while True:
-                        output = download_process.stdout.readline()
-                        if output == "" and download_process.poll() is not None:
-                            break
-                        if output:
-                            print(output.strip())
-
-                    # Check return code
-                    download_process.wait()
+                    batch_download_posts(json_path, post_id)
 
                     # After download, check files again
                     current_files = [
@@ -212,6 +192,8 @@ def run_download_script(json_path: str) -> None:
                             f"Post {post_id} partially downloaded: {current_files_count}/{expected_files_count} files"
                         )
 
+                except FileNotFoundError as e:
+                    print(f"Error: JSON file not found for post {post_id}: {e}")
                 except Exception as e:
                     print(f"Error while downloading post {post_id}: {e}")
 
