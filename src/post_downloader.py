@@ -525,7 +525,7 @@ def process_posts(links: List[str]) -> None:
             if config.post_folder_name == "title":
                 post_title = get_post_title(post_data)
                 # Prevent duplicated title
-                folder_name = f"{post_title}_{post_id}"
+                folder_name = f"{post_id}_{post_title}"
 
                 # TODO: check if there are old folders that its name is just "{post_id}"
                 # if such folder exists, rename it into the new form
