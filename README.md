@@ -52,16 +52,16 @@ Posts are saved in folders to facilitate organization. The folder structure foll
 ### Example Folder Structure
 
 ```
-Kemono-and-Coomer-Downloader/
+Better-Kemono-and-Coomer-Downloader/
 │
 ├── kemono/                                 # Kemono platform folder
 │   ├── Name-Service-Id/                    # Author folder in Name-Service-Id format
 │   │   ├── posts/                          # Author's posts folder
-│   │   │   ├── postID1/                    # Post folder with ID 1
+│   │   │   ├── postID1_postTitle1/         # Post folder with ID 1
 │   │   │   │   ├── post_content            # Post content
 │   │   │   │   ├── files.md                # (Optional) File with file information
 │   │   │   │   └── ...                     # Other post files
-│   │   │   ├── postID2/                    # Post folder with ID 2
+│   │   │   ├── postID2_postTitle2/         # Post folder with ID 2
 │   │   │   │   ├── post_content            # Post content
 │   │   │   │   └── files.txt               # (Optional) File with file information
 │   │   │   └── ...                         # Other posts
@@ -70,23 +70,53 @@ Kemono-and-Coomer-Downloader/
 │       ├── posts/                          # Author's posts folder
 │       └── ...                             # Other content
 │
-└── coomer/                                 # Coomer platform folder
-    ├── Name-Service-Id/                    # Author folder in Name-Service-Id format
-    │   ├── posts/                          # Author's posts folder
-    │   │   ├── postID1/                    # Post folder with ID 1
-    │   │   │   ├── post_content            # Post content
-    │   │   │   ├── files.txt               # (Optional) File with file information
-    │   │   │   └── ...                     # Other post files
-    │   │   └── postID2/                    # Post folder with ID 2
-    │   │       ├── post_content            # Post content
-    │   │       └── ...                     # Other post files
-    │   └── ...                             # Other author content
-    └── Name-Service-Id/                    # Another author folder in Name-Service-Id format
-        ├── posts/                          # Author's posts folder
-        └── ...                             # Other content
+├── coomer/                                 # Coomer platform folder
+│   ├── Name-Service-Id/                    # Author folder in Name-Service-Id format
+│   │   ├── posts/                          # Author's posts folder
+│   │   │   ├── postID1_postTitle1/         # Post folder with ID 1
+│   │   │   │   ├── post_content            # Post content
+│   │   │   │   ├── files.txt               # (Optional) File with file information
+│   │   │   │   └── ...                     # Other post files
+│   │   │   ├── postID2_postTitle2/         # Post folder with ID 2
+│   │   │       ├── post_content            # Post content
+│   │   │       └── ...                     # Other post files
+│   │   └── ...                             # Other author content
+│   └── Name-Service-Id/                    # Another author folder in Name-Service-Id format
+│       ├── posts/                          # Author's posts folder
+│       └── ...                             # Other content
+│
+│
+└── failed_downloads.txt                    # A log buffer of links with failed downloads
 ```
 
 ![Folder Organization](img/pastas.png)
+
+### About `failed_downloads.txt`
+
+For any failed downloads attemp within a link when processing, the link will be automatically saved to this log file.
+You can try following this work flow to retry your failed link downloads:
+```
+Choose an option:
+1 - Download 1 post or a few separate posts
+2 - Download all posts from a profile
+3 - Customize the program settings
+4 - Exit the program
+
+Enter your choice (1/2/3/4): 1
+
+
+Download 1 post or a few separate posts
+------------------------------------
+Choose the input method:
+1 - Enter the links directly
+2 - Loading links from a TXT file
+3 - Back to the main menu
+
+Enter your choice (1/2/3): 2
+Enter the path to the TXT file: failed_downloads.txt
+```
+
+After a successful retry with all files downloaded completely, the link will be automatically removed from `failed_downloads.txt`.
 
 ### About the `files.md` or `files.txt` File
 
