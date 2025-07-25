@@ -219,12 +219,13 @@ def download_specific_posts() -> None:
     print("Choose the input method:")
     print("1 - Enter the links directly")
     print("2 - Loading links from a TXT file")
-    print("3 - Back to the main menu")
-    choice = input("\nEnter your choice (1/2/3): ")
+    print("3 - Restart failed downloads in previous attempts")
+    print("4 - Back to the main menu")
+    choice = input("\nEnter your choice (1/2/3/4): ")
 
     links: List[str] = []
 
-    if choice == "3":
+    if choice == "4":
         return
     elif choice == "1":
         print("Paste the links to the posts (separated by commas or space):")
@@ -239,6 +240,25 @@ def download_specific_posts() -> None:
                 links = re.split(r"[,\s\n]+", content)
         else:
             print(f"Error: The file '{file_path}' was not found.")
+            input("\nPress Enter to continue...")
+            return
+    elif choice == "3":
+        failed_downloads_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "failed_downloads.txt"
+        )
+        if os.path.exists(failed_downloads_path):
+            with open(failed_downloads_path, "r", encoding="utf-8") as file:
+                content = file.read()
+                links = re.split(r"[,\s\n]+", content)
+                links = [link.strip() for link in links if link.strip()]
+                if links:
+                    print(f"Found {len(links)} failed download(s) to retry.")
+                else:
+                    print("No failed downloads found in failed_downloads.txt")
+                    input("\nPress Enter to continue...")
+                    return
+        else:
+            print("failed_downloads.txt file not found. No failed downloads to retry.")
             input("\nPress Enter to continue...")
             return
     else:

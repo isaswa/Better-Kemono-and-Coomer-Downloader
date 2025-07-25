@@ -521,12 +521,12 @@ def process_posts(links: List[str]) -> None:
             # Fetch post data
             post_data = fetch_post(domain, service, user_id, post_id)
 
+            post_title = get_post_title(post_data)
+
             # Decide folder name based on config setting
             if config.post_folder_name == "title":
-                post_title = get_post_title(post_data)
                 # Prevent duplicated title
                 folder_name = f"{post_id}_{post_title}"
-
                 # TODO: check if there are old folders that its name is just "{post_id}"
                 # if such folder exists, rename it into the new form
             else:
@@ -534,6 +534,8 @@ def process_posts(links: List[str]) -> None:
 
             post_folder = os.path.join(posts_folder, folder_name)
             ensure_directory(post_folder)
+
+            print(f"--- Post title: {post_title}")
 
             # Save post content using configurations
             download_result = save_post_content(post_data, post_folder, config)
