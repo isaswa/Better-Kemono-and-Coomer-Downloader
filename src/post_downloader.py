@@ -10,6 +10,8 @@ from urllib.parse import quote, urlparse, unquote
 
 from .config import load_config, Config
 
+FAILED_DOWNLOAD_LOG_FILENAME = "failed_downloads.txt"
+
 
 def ensure_directory(path: str) -> None:
     if not os.path.exists(path):
@@ -443,17 +445,21 @@ def get_post_title(post_data: Dict[str, Any]) -> str:
         title = post_data.get("post", {}).get("title", "")
 
         # Ensure the title is valid for use in filenames
-        invalid_chars = '<>:"/\\|?*'
+        invalid_chars = '<>:"/\\|?*.'
         for char in invalid_chars:
             title = title.replace(char, "_")
+
         title = title.strip()
+
+        while title.endswith("."):
+            title = title.rstrip(".")
 
         return title if title else ""
     except Exception:
         return ""
 
 
-def load_failed_downloads(file_path: str = "failed_downloads.txt") -> Set[str]:
+def load_failed_downloads(file_path: str = FAILED_DOWNLOAD_LOG_FILENAME) -> Set[str]:
     """Load failed download links from file."""
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
@@ -462,7 +468,7 @@ def load_failed_downloads(file_path: str = "failed_downloads.txt") -> Set[str]:
 
 
 def save_failed_downloads(
-    failed_links: Set[str], file_path: str = "failed_downloads.txt"
+    failed_links: Set[str], file_path: str = FAILED_DOWNLOAD_LOG_FILENAME
 ) -> None:
     """Save failed download links to file."""
     with open(file_path, "w", encoding="utf-8") as f:
@@ -470,14 +476,18 @@ def save_failed_downloads(
             f.write(f"{link}\n")
 
 
-def add_failed_download(link: str, file_path: str = "failed_downloads.txt") -> None:
+def add_failed_download(
+    link: str, file_path: str = FAILED_DOWNLOAD_LOG_FILENAME
+) -> None:
     """Add a failed download link to the file."""
     failed_links = load_failed_downloads(file_path)
     failed_links.add(link)
     save_failed_downloads(failed_links, file_path)
 
 
-def remove_failed_download(link: str, file_path: str = "failed_downloads.txt") -> None:
+def remove_failed_download(
+    link: str, file_path: str = FAILED_DOWNLOAD_LOG_FILENAME
+) -> None:
     """Remove a successful download link from the failed downloads file."""
     failed_links = load_failed_downloads(file_path)
     failed_links.discard(link)
@@ -563,11 +573,13 @@ def process_posts(links: List[str]) -> None:
                     print(f"  - {failed['name']}")
 
                 add_failed_download(user_link)
+                print(f"⚠️ Added link to {FAILED_DOWNLOAD_LOG_FILENAME}")
             else:
                 print(f"\n✅ Link processed successfully: {user_link}")
                 print(f"✅ Downloaded all {download_result['success_count']} files")
 
                 remove_failed_download(user_link)
+                print(f"✅ Removed link from {FAILED_DOWNLOAD_LOG_FILENAME}")
 
         except Exception as e:
             print(f"❌ Error processing link {user_link}: {e}")
