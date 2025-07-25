@@ -71,7 +71,7 @@ def fetch_post(domain: str, service: str, user_id: str, post_id: str) -> Dict[st
     url = f"{api_base_url}{service}/user/{user_id}/post/{post_id}"
     response = requests.get(url)
     response.raise_for_status()
-    response.encoding = response.apparent_encoding
+    response.encoding = "utf-8"
     return response.json()
 
 
@@ -437,10 +437,18 @@ def get_post_title(post_data: Dict[str, Any]) -> str:
     """
     Extract the post title from post_data.
     Return empty string if failed to get the title.
+    Handles proper Unicode support.
     """
     try:
         title = post_data.get("post", {}).get("title", "")
-        return title
+
+        # Ensure the title is valid for use in filenames
+        invalid_chars = '<>:"/\\|?*'
+        for char in invalid_chars:
+            title = title.replace(char, "_")
+        title = title.strip()
+
+        return title if title else ""
     except Exception:
         return ""
 
