@@ -375,7 +375,10 @@ def customize_settings() -> None:
         print(
             f"4 - Choose the type of file to save the information (Markdown or TXT): {config.post_info}"
         )
-        print("5 - Back to the main menu")
+        print(
+            f"5 - Skip already downloaded files when processing links (recommended: True): {config.skip_existed_files}"
+        )
+        print("6 - Back to the main menu")
 
         choice = input("\nChoose an option (1/2/3/4/5): ")
 
@@ -388,6 +391,8 @@ def customize_settings() -> None:
         elif choice == "4":
             config.post_info = "txt" if config.post_info == "md" else "md"
         elif choice == "5":
+            config.skip_existed_files = not config.skip_existed_files
+        elif choice == "6":
             break
         else:
             print("Invalid option. Please try again.")
