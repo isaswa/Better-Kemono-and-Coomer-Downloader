@@ -5,7 +5,7 @@ import requests
 from typing import Dict, List, Tuple, Optional, Any, Union, Callable
 from datetime import datetime
 
-from .config import load_config, Config
+from .config import load_config, Config, get_domains
 
 
 def save_json(file_path: str, data: Any) -> None:
@@ -20,13 +20,25 @@ def get_base_config(profile_url: str) -> Tuple[str, str, str]:
     """
     # Extract domain from the profile URL
     domain = profile_url.split("/")[2]
+    
+    # Get valid domains
+    domains = get_domains()
+    valid_domains = list(domains.values())
 
-    if domain not in ["kemono.su", "coomer.su"]:
-        raise ValueError(f"Unsupported domain: {domain}")
+    if domain not in valid_domains:
+        raise ValueError(f"Unsupported domain: {domain}. Supported domains: {', '.join(valid_domains)}")
 
     BASE_API_URL = f"https://{domain}/api/v1"
     BASE_SERVER = f"https://{domain}"
-    BASE_DIR = domain.split(".")[0]  # 'kemono' or 'coomer'
+    
+    # Determine base directory name from domain mapping
+    if domain == domains["kemono"]:
+        BASE_DIR = "kemono"
+    elif domain == domains["coomer"]:
+        BASE_DIR = "coomer"
+    else:
+        # Fallback to extracting from domain
+        BASE_DIR = domain.split(".")[0]
 
     return BASE_API_URL, BASE_SERVER, BASE_DIR
 

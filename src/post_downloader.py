@@ -8,7 +8,7 @@ from tqdm import tqdm
 from html.parser import HTMLParser
 from urllib.parse import quote, urlparse, unquote
 
-from .config import load_config, Config
+from .config import load_config, Config, get_domains
 
 FAILED_DOWNLOAD_LOG_FILENAME = "failed_downloads.txt"
 
@@ -32,26 +32,46 @@ def save_profiles(path: str, profiles: Dict[str, Any]) -> None:
 
 def extract_data_from_link(link: str) -> Tuple[str, str, str, str]:
     """
-    Extract service, user_id, and post_id from both kemono.su and coomer.su links
+    Extract service, user_id, and post_id from kemono and coomer links
     """
-    # Pattern for both kemono.su and coomer.su
-    match = re.match(
-        r"https://(kemono|coomer)\.su/([^/]+)/user/([^/]+)/post/([^/]+)", link
-    )
-    if not match:
-        raise ValueError("Invalid link format")
+    # Get current domain mappings
+    domains = get_domains()
+    
+    # Parse the URL to get the domain
+    parsed_url = urlparse(link)
+    domain = parsed_url.netloc
+    
+    # Determine which service this is based on domain
+    if domain == domains["kemono"]:
+        service_type = "kemono"
+    elif domain == domains["coomer"]:
+        service_type = "coomer"
+    else:
+        raise ValueError(f"Invalid domain: {domain}. Supported domains: {list(domains.values())}")
+    
+    # Extract path components
+    path_parts = parsed_url.path.strip('/').split('/')
+    
+    # Expected format: service/user/user_id/post/post_id
+    if len(path_parts) < 5 or path_parts[1] != "user" or path_parts[3] != "post":
+        raise ValueError("Invalid link format. Expected: https://domain/service/user/user_id/post/post_id")
+    
+    service = path_parts[0]
+    user_id = path_parts[2]
+    post_id = path_parts[4]
+    
+    return service_type, service, user_id, post_id
 
-    # Unpack the match groups
-    domain, service, user_id, post_id = match.groups()
 
-    return domain, service, user_id, post_id
-
-
-def get_api_base_url(domain: str) -> str:
+def get_api_base_url(domain_type: str) -> str:
     """
-    Dynamically generate API base URL based on the domain
+    Dynamically generate API base URL based on the domain type
     """
-    return f"https://{domain}.su/api/v1/"
+    domains = get_domains()
+    domain = domains.get(domain_type)
+    if not domain:
+        raise ValueError(f"Unknown domain type: {domain_type}")
+    return f"https://{domain}/api/v1/"
 
 
 def fetch_profile(domain: str, service: str, user_id: str) -> Dict[str, Any]:
@@ -180,14 +200,17 @@ def download_files(
     failed_files: List[Dict[str, str]] = []
     success_count: int = 0
 
+    # Get valid domains for checking
+    valid_domains = list(get_domains().values())
+    
     for idx, (original_name, url) in enumerate(file_list, start=1):
         # Check if URL is from allowed domains
         parsed_url = urlparse(url)
-        domain = (
-            parsed_url.netloc.split(".")[-2] + "." + parsed_url.netloc.split(".")[-1]
-        )  # Get main domain
-        if domain not in ["kemono.su", "coomer.su"]:
+        domain = parsed_url.netloc
+        
+        if domain not in valid_domains:
             print(f"⚠️ Ignoring not allowed domain URL: {url}")
+            print(f"   Allowed domains: {', '.join(valid_domains)}")
             continue
 
         # Derive file extension from original name if available, otherwise from URL path

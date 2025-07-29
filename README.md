@@ -130,6 +130,12 @@ The `files.md` (or `files.txt`, depending on the chosen configuration) file cont
 
 ![Example of files.md](img/files.png)
 
+### Configurations
+
+You can set the configurations by `main.py` interactive UI or manually change the json files under `config/`.
+
+The domain for `Kemono` and `Coomer` web services is set in `config/domain.json`, and the user should fix them everytime these web services moved their domain (not every often, though). 
+
 ## Contributions
 
 Leave any comment or bug report in the [Issues page](https://github.com/isaswa/Better-Kemono-and-Coomer-Downloader/issues).

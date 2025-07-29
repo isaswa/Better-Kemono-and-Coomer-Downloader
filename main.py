@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 from src.post_extractor import extract_posts
 from src.post_downloader import process_posts
 from src.batch_file_downloader import batch_download_posts
-from src.config import load_config, save_config, Config
+from src.config import load_config, save_config, Config, get_domains
 
 
 def install_requirements() -> None:
@@ -268,13 +268,17 @@ def download_specific_posts() -> None:
 
     links = [link.strip() for link in links if link.strip()]
 
+    # Get current valid domains
+    valid_domains = list(get_domains().values())
+    
     for link in links:
         try:
             domain = urlparse(link).netloc
-            if domain == "kemono.su" or domain == "coomer.su":
+            if domain in valid_domains:
                 process_posts([link])
             else:
                 print(f"Domain not supported: {domain}")
+                print(f"Supported domains: {', '.join(valid_domains)}")
                 continue
         except IndexError:
             print(f"Link format error: {link}")
