@@ -36,30 +36,34 @@ def extract_data_from_link(link: str) -> Tuple[str, str, str, str]:
     """
     # Get current domain mappings
     domains = get_domains()
-    
+
     # Parse the URL to get the domain
     parsed_url = urlparse(link)
     domain = parsed_url.netloc
-    
+
     # Determine which service this is based on domain
     if domain == domains["kemono"]:
         service_type = "kemono"
     elif domain == domains["coomer"]:
         service_type = "coomer"
     else:
-        raise ValueError(f"Invalid domain: {domain}. Supported domains: {list(domains.values())}")
-    
+        raise ValueError(
+            f"Invalid domain: {domain}. Supported domains: {list(domains.values())}"
+        )
+
     # Extract path components
-    path_parts = parsed_url.path.strip('/').split('/')
-    
+    path_parts = parsed_url.path.strip("/").split("/")
+
     # Expected format: service/user/user_id/post/post_id
     if len(path_parts) < 5 or path_parts[1] != "user" or path_parts[3] != "post":
-        raise ValueError("Invalid link format. Expected: https://domain/service/user/user_id/post/post_id")
-    
+        raise ValueError(
+            "Invalid link format. Expected: https://domain/service/user/user_id/post/post_id"
+        )
+
     service = path_parts[0]
     user_id = path_parts[2]
     post_id = path_parts[4]
-    
+
     return service_type, service, user_id, post_id
 
 
@@ -202,13 +206,14 @@ def download_files(
 
     # Get valid domains for checking
     valid_domains = list(get_domains().values())
-    
+
     for idx, (original_name, url) in enumerate(file_list, start=1):
         # Check if URL is from allowed domains
         parsed_url = urlparse(url)
+        # would be cdn domain (e.g. n1.kemono.cr, n2.kemono.cr, ...)
         domain = parsed_url.netloc
-        
-        if domain not in valid_domains:
+
+        if all(valid_domain not in domain for valid_domain in valid_domains):
             print(f"⚠️ Ignoring not allowed domain URL: {url}")
             print(f"   Allowed domains: {', '.join(valid_domains)}")
             continue
