@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from .config import load_config, Config
 from .format_helpers import sanitize_filename, sanitize_title
-
+from .failure_handlers import add_failed_download, remove_failed_download
 
 
 def download_file(file_url: str, save_path: str) -> Tuple[bool, Optional[str]]:
@@ -41,21 +41,27 @@ def download_file(file_url: str, save_path: str) -> Tuple[bool, Optional[str]]:
         if total_size != 0 and progress_bar.n != total_size:
             error_msg = f"Incomplete download: {progress_bar.n}/{total_size} bytes"
             print(f"⚠️ {error_msg}")
+            add_failed_download(file_url)
             return False, error_msg
 
+        # Download successful, remove from failed downloads if it was there
+        remove_failed_download(file_url)
         return True, None
 
     except requests.exceptions.RequestException as e:
         error_msg = f"Network error: {str(e)}"
         print(f"❌ Download failed {file_url}: {error_msg}")
+        add_failed_download(file_url)
         return False, error_msg
     except IOError as e:
         error_msg = f"File I/O error: {str(e)}"
         print(f"❌ Failed to save file {save_path}: {error_msg}")
+        add_failed_download(file_url)
         return False, error_msg
     except Exception as e:
         error_msg = f"Unexpected error: {str(e)}"
         print(f"❌ Download failed {file_url}: {error_msg}")
+        add_failed_download(file_url)
         return False, error_msg
 
 
