@@ -4,6 +4,7 @@
 
 This is a forked better version of [**Kemono and Coomer Downloader**](https://github.com/e43b/Kemono-and-Coomer-Downloader/), since the original project has too many bugs and bad practices in the codebase, and also in a very inactive status in terms of maintaining the project.
 
+Check [**Releases**](https://github.com/isaswa/Better-Kemono-and-Coomer-Downloader/releases) for stable release versions of this tool. The main branch could contain some experimental features.
 
 ## Star History
 
