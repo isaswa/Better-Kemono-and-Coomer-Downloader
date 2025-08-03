@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple, Optional, Any, Union, Callable
 from datetime import datetime
 
 from .config import load_config, get_domains
-from .format_helpers import sanitize_folder_name
+from .format_helpers import sanitize_folder_name, get_artist_dir
 
 
 def save_json(file_path: str, data: Any) -> None:
@@ -243,13 +243,9 @@ def extract_posts(profile_url: str, fetch_mode: str = "all") -> str:
     profiles[user_id] = artist_info
     save_json(profiles_file, profiles)
 
-    # Sanitize the values
-    safe_name = sanitize_folder_name(name)
-    safe_service = sanitize_folder_name(service)
-    safe_user_id = sanitize_folder_name(user_id)
-
     # Artist folder
-    artist_dir = os.path.join(base_dir, f"{safe_name}-{safe_service}-{safe_user_id}")
+    artist_dir_name = get_artist_dir(name, service, user_id)
+    artist_dir = os.path.join(base_dir, artist_dir_name)
     os.makedirs(artist_dir, exist_ok=True)
 
     # Process fetch mode

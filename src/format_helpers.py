@@ -91,3 +91,15 @@ def adapt_file_name(name: str) -> str:
         sanitized_name = "unknown_filename"
 
     return sanitized_name
+
+
+def get_artist_dir(name: str, service: str, user_id: str) -> str:
+    """
+    Generate standardized artist directory name in format: name-service-user_id
+    All components are sanitized for safe folder creation.
+    """
+    safe_name = sanitize_folder_name(name)
+    safe_service = sanitize_folder_name(service)
+    safe_user_id = sanitize_folder_name(user_id)
+    
+    return f"{safe_name}-{safe_service}-{safe_user_id}"

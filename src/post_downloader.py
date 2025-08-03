@@ -9,7 +9,13 @@ from html.parser import HTMLParser
 from urllib.parse import quote, urlparse, unquote
 
 from .config import load_config, Config, get_domains
-from .format_helpers import sanitize_filename, sanitize_folder_name, sanitize_title, adapt_file_name
+from .format_helpers import (
+    sanitize_filename,
+    sanitize_folder_name,
+    sanitize_title,
+    adapt_file_name,
+    get_artist_dir,
+)
 from .failure_handlers import (
     FAILED_DOWNLOAD_LOG_FILENAME,
     load_failed_downloads,
@@ -471,13 +477,9 @@ def process_posts(links: List[str]) -> None:
                 profile_data = profiles[user_id]
 
             # Create specific folder for the user
-            user_name = sanitize_folder_name(profile_data.get("name", "unknown_user"))
-            safe_service = sanitize_folder_name(service)
-            safe_user_id = sanitize_folder_name(user_id)
-
-            user_folder = os.path.join(
-                base_path, f"{user_name}-{safe_service}-{safe_user_id}"
-            )
+            user_name = profile_data.get("name", "unknown_user")
+            artist_dir_name = get_artist_dir(user_name, service, user_id)
+            user_folder = os.path.join(base_path, artist_dir_name)
             ensure_directory(user_folder)
 
             # Create posts folder and post-specific folder
