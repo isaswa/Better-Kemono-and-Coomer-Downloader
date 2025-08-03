@@ -3,6 +3,7 @@ import json
 import re
 import time
 import requests
+import signal
 from typing import Dict, List, Tuple, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 import sys
@@ -110,22 +111,36 @@ def process_post(
 
     # Download files using ThreadPoolExecutor
     print(f"Downloading {total_files} files...")
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        # Submit all downloads and collect futures
-        futures = []
-        for file_url, file_save_path in downloads:
-            future = executor.submit(download_file, file_url, file_save_path)
-            futures.append((future, file_url, file_save_path))
+    
+    try:
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            # Submit all downloads and collect futures
+            futures = []
+            for file_url, file_save_path in downloads:
+                future = executor.submit(download_file, file_url, file_save_path)
+                futures.append((future, file_url, file_save_path))
 
-        # Wait for all downloads to complete
-        for future, file_url, file_save_path in futures:
-            success, error_msg = future.result()
-            if success:
-                successful += 1
-            else:
-                failed.append(
-                    {"url": file_url, "path": file_save_path, "error": error_msg}
-                )
+            # Wait for all downloads to complete
+            for future, file_url, file_save_path in futures:
+                try:
+                    success, error_msg = future.result()
+                    if success:
+                        successful += 1
+                    else:
+                        failed.append(
+                            {"url": file_url, "path": file_save_path, "error": error_msg}
+                        )
+                except KeyboardInterrupt:
+                    print("\n⚠️ Download interrupted by user (Ctrl+C)")
+                    print("Cancelling remaining downloads...")
+                    # Cancel remaining futures
+                    for remaining_future, _, _ in futures:
+                        remaining_future.cancel()
+                    break
+    except KeyboardInterrupt:
+        print("\n⚠️ Download interrupted by user (Ctrl+C)")
+        print("Cancelling all downloads...")
+        # The executor context manager will handle cleanup
 
     # Print summary
     if failed:

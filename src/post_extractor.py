@@ -21,17 +21,19 @@ def get_base_config(profile_url: str) -> Tuple[str, str, str]:
     """
     # Extract domain from the profile URL
     domain = profile_url.split("/")[2]
-    
+
     # Get valid domains
     domains = get_domains()
     valid_domains = list(domains.values())
 
     if domain not in valid_domains:
-        raise ValueError(f"Unsupported domain: {domain}. Supported domains: {', '.join(valid_domains)}")
+        raise ValueError(
+            f"Unsupported domain: {domain}. Supported domains: {', '.join(valid_domains)}"
+        )
 
     BASE_API_URL = f"https://{domain}/api/v1"
     BASE_SERVER = f"https://{domain}"
-    
+
     # Determine base directory name from domain mapping
     if domain == domains["kemono"]:
         BASE_DIR = "kemono"
@@ -194,7 +196,6 @@ def process_posts(
         processed.append(result)
 
     return processed
-
 
 
 def extract_posts(profile_url: str, fetch_mode: str = "all") -> str:
