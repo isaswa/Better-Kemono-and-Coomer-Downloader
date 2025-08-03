@@ -8,6 +8,7 @@ import importlib
 from typing import Dict, List, Optional, Any
 from urllib.parse import urlparse
 
+from src.format_helpers import sanitize_title
 from src.post_extractor import extract_posts
 from src.post_downloader import process_posts
 from src.batch_file_downloader import batch_download_posts
@@ -158,15 +159,13 @@ def run_download_script(json_path: str) -> None:
                     # Extract title from post data
                     post_title = post_data.get("title", "").strip()
                     if post_title:
-                        # Sanitize title for use as folder name
-                        sanitized_title = re.sub(r'[<>:"/\\|?*]', '_', post_title)
-                        sanitized_title = sanitized_title.strip()[:50]  # Limit length
+                        sanitized_title = sanitize_title(post_title)
                         folder_name = f"{post_id}_{sanitized_title}"
                     else:
                         folder_name = post_id
                 else:
                     folder_name = post_id
-                
+
                 post_folder = normalize_path(os.path.join(posts_folder, folder_name))
                 os.makedirs(post_folder, exist_ok=True)
 

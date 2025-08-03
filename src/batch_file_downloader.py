@@ -80,7 +80,7 @@ def process_post(
         post_title = post.get("title", "").strip()
         if post_title:
             # Sanitize title for folder name
-            sanitized_title = sanitize_title(post_title)[:50]  # Limit length
+            sanitized_title = sanitize_title(post_title)
             folder_name = f"{post_id}_{sanitized_title}"
         else:
             folder_name = post_id
@@ -111,12 +111,34 @@ def process_post(
 
     # Download files using ThreadPoolExecutor
     print(f"Downloading {total_files} files...")
-    
+
     try:
         with ThreadPoolExecutor(max_workers=3) as executor:
             # Submit all downloads and collect futures
             futures = []
             for file_url, file_save_path in downloads:
+                # Check if file exists and skip if configured to do so
+                if config.skip_existed_files and os.path.exists(file_save_path):
+                    try:
+                        # Check if existing file size matches expected size
+                        existing_size = os.path.getsize(file_save_path)
+                        response = requests.head(file_url, timeout=10)
+                        expected_size = int(response.headers.get("content-length", 0))
+
+                        if expected_size > 0 and existing_size == expected_size:
+                            filename = os.path.basename(file_save_path)
+                            print(f"Skipped (complete): {filename}")
+                            successful += 1
+                            continue
+                        elif expected_size > 0:
+                            filename = os.path.basename(file_save_path)
+                            print(
+                                f"Re-downloading (incomplete): {filename} ({existing_size}/{expected_size} bytes)"
+                            )
+                    except Exception:
+                        # Proceed with download if cannot check
+                        pass
+
                 future = executor.submit(download_file, file_url, file_save_path)
                 futures.append((future, file_url, file_save_path))
 
@@ -128,7 +150,11 @@ def process_post(
                         successful += 1
                     else:
                         failed.append(
-                            {"url": file_url, "path": file_save_path, "error": error_msg}
+                            {
+                                "url": file_url,
+                                "path": file_save_path,
+                                "error": error_msg,
+                            }
                         )
                 except KeyboardInterrupt:
                     print("\n⚠️ Download interrupted by user (Ctrl+C)")
@@ -182,9 +208,6 @@ def batch_download_posts(json_file_path: str, post_id: str = None) -> None:
     # Load configuration from JSON file
     config = load_config()
 
-    # Get the value of 'process_from_oldest' from configuration
-    process_from_oldest = config.process_from_oldest
-
     posts = profile_metadata.get("posts", [])
 
     # Filter for specific post if post_id is provided
@@ -194,8 +217,10 @@ def batch_download_posts(json_file_path: str, post_id: str = None) -> None:
             print(f"Post ID {post_id} not found in JSON file")
             return
     else:
-        # Apply ordering if processing all posts
-        if process_from_oldest:
+        # Sort posts by their ID field (default: oldest first)
+        posts = sorted(posts, key=lambda post: post.get("id", ""))
+        # Reverse to descending order (newest first)
+        if not config.process_from_oldest:
             posts = list(reversed(posts))
 
     # Process each post sequentially
