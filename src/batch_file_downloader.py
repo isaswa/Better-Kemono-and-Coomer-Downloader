@@ -3,39 +3,89 @@ import json
 import re
 import time
 import requests
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 import sys
+from tqdm import tqdm
 
 from .config import load_config, Config
+from .format_helpers import sanitize_filename, sanitize_title
 
 
-def sanitize_filename(filename: str) -> str:
-    """Sanitize filename by removing invalid characters and replacing spaces with underscores."""
-    filename = re.sub(r"[\\/*?\"<>|]", "", filename)
-    return filename.replace(" ", "_")
 
-
-def download_file(file_url: str, save_path: str) -> None:
-    """Download a file from a URL and save it to the specified path."""
+def download_file(file_url: str, save_path: str) -> Tuple[bool, Optional[str]]:
+    """
+    Download a file from a URL and save it to the specified path.
+    Returns (success, error_message) tuple.
+    """
     try:
         response = requests.get(file_url, stream=True)
         response.raise_for_status()
-        with open(save_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
+
+        # Get total file size
+        total_size = int(response.headers.get("content-length", 0))
+        block_size = 8192
+
+        # Create progress bar
+        filename = os.path.basename(save_path)
+        with tqdm(
+            total=total_size, unit="B", unit_scale=True, desc=filename
+        ) as progress_bar:
+            with open(save_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=block_size):
+                    if chunk:
+                        progress_bar.update(len(chunk))
+                        f.write(chunk)
+
+        # Verify download completeness
+        if total_size != 0 and progress_bar.n != total_size:
+            error_msg = f"Incomplete download: {progress_bar.n}/{total_size} bytes"
+            print(f"⚠️ {error_msg}")
+            return False, error_msg
+
+        return True, None
+
+    except requests.exceptions.RequestException as e:
+        error_msg = f"Network error: {str(e)}"
+        print(f"❌ Download failed {file_url}: {error_msg}")
+        return False, error_msg
+    except IOError as e:
+        error_msg = f"File I/O error: {str(e)}"
+        print(f"❌ Failed to save file {save_path}: {error_msg}")
+        return False, error_msg
     except Exception as e:
-        print(f"Download failed {file_url}: {e}")
+        error_msg = f"Unexpected error: {str(e)}"
+        print(f"❌ Download failed {file_url}: {error_msg}")
+        return False, error_msg
 
 
-def process_post(post: Dict[str, Any], base_folder: str) -> None:
-    """Process a single post, downloading its files."""
+def process_post(
+    post: Dict[str, Any], base_folder: str, config: Config
+) -> Dict[str, Any]:
+    """
+    Process a single post, downloading its files.
+    Returns statistics about the download.
+    """
     post_id = post.get("id")
-    post_folder = os.path.join(base_folder, post_id)
+
+    # Determine folder name based on config
+    if config.post_folder_name == "title":
+        post_title = post.get("title", "").strip()
+        if post_title:
+            # Sanitize title for folder name
+            sanitized_title = sanitize_title(post_title)[:50]  # Limit length
+            folder_name = f"{post_id}_{sanitized_title}"
+        else:
+            folder_name = post_id
+    else:
+        folder_name = post_id
+
+    post_folder = os.path.join(base_folder, folder_name)
     os.makedirs(post_folder, exist_ok=True)
 
-    print(f"Processing post ID {post_id}")
+    print(f"\nProcessing post ID {post_id}")
+    if config.post_folder_name == "title" and post.get("title"):
+        print(f"Title: {post.get('title')}")
 
     # Prepare downloads for this post
     downloads: List[Tuple[str, str]] = []
@@ -47,12 +97,46 @@ def process_post(post: Dict[str, Any], base_folder: str) -> None:
         file_save_path = os.path.join(post_folder, new_filename)
         downloads.append((file_url, file_save_path))
 
-    # Download files using ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        for file_url, file_save_path in downloads:
-            executor.submit(download_file, file_url, file_save_path)
+    # Track download results
+    total_files = len(downloads)
+    successful = 0
+    failed = []
 
-    print(f"Post {post_id} downloaded")
+    # Download files using ThreadPoolExecutor
+    print(f"Downloading {total_files} files...")
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        # Submit all downloads and collect futures
+        futures = []
+        for file_url, file_save_path in downloads:
+            future = executor.submit(download_file, file_url, file_save_path)
+            futures.append((future, file_url, file_save_path))
+
+        # Wait for all downloads to complete
+        for future, file_url, file_save_path in futures:
+            success, error_msg = future.result()
+            if success:
+                successful += 1
+            else:
+                failed.append(
+                    {"url": file_url, "path": file_save_path, "error": error_msg}
+                )
+
+    # Print summary
+    if failed:
+        print(
+            f"⚠️ Post {post_id} completed with errors: {successful}/{total_files} files downloaded"
+        )
+        for fail in failed:
+            print(f"   ❌ Failed: {os.path.basename(fail['path'])}")
+    else:
+        print(f"✅ Post {post_id} completed: all {successful} files downloaded")
+
+    return {
+        "post_id": post_id,
+        "total_files": total_files,
+        "successful": successful,
+        "failed": failed,
+    }
 
 
 def batch_download_posts(json_file_path: str, post_id: str = None) -> None:
@@ -95,7 +179,7 @@ def batch_download_posts(json_file_path: str, post_id: str = None) -> None:
 
     # Process each post sequentially
     for post_index, post in enumerate(posts, start=1):
-        process_post(post, base_folder)
+        process_post(post, base_folder, config)
         time.sleep(2)  # Wait 2 seconds between posts
 
 

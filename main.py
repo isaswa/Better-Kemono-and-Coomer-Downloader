@@ -153,7 +153,21 @@ def run_download_script(json_path: str) -> None:
 
             if post_data:
                 # Specific post folder with normalization
-                post_folder = normalize_path(os.path.join(posts_folder, post_id))
+                # Determine folder name based on config
+                if config.post_folder_name == "title":
+                    # Extract title from post data
+                    post_title = post_data.get("title", "").strip()
+                    if post_title:
+                        # Sanitize title for use as folder name
+                        sanitized_title = re.sub(r'[<>:"/\\|?*]', '_', post_title)
+                        sanitized_title = sanitized_title.strip()[:50]  # Limit length
+                        folder_name = f"{post_id}_{sanitized_title}"
+                    else:
+                        folder_name = post_id
+                else:
+                    folder_name = post_id
+                
+                post_folder = normalize_path(os.path.join(posts_folder, folder_name))
                 os.makedirs(post_folder, exist_ok=True)
 
                 # Count number of files in JSON for this post
@@ -270,7 +284,7 @@ def download_specific_posts() -> None:
 
     # Get current valid domains
     valid_domains = list(get_domains().values())
-    
+
     for link in links:
         try:
             domain = urlparse(link).netloc
@@ -313,6 +327,7 @@ def download_profile_posts() -> None:
 
         if choice == "1":
             try:
+                print("Processing profile...")
                 json_path = extract_posts(profile_link, "all")
             except Exception as e:
                 print(f"Error generating JSON: {e}")

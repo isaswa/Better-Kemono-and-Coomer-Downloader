@@ -9,6 +9,7 @@ from html.parser import HTMLParser
 from urllib.parse import quote, urlparse, unquote
 
 from .config import load_config, Config, get_domains
+from .format_helpers import sanitize_filename, sanitize_folder_name, sanitize_title, adapt_file_name
 
 FAILED_DOWNLOAD_LOG_FILENAME = "failed_downloads.txt"
 
@@ -149,44 +150,6 @@ def clean_html_to_text(html: str) -> Tuple[str, str]:
     parser.feed(html)
     return parser.get_markdown(), parser.get_raw_content()
 
-
-def adapt_file_name(name: str) -> str:
-    """
-    Sanitize file name by removing special characters and reducing its size.
-    Handles URL-encoded filenames and limits to 50 UTF-8 characters.
-    """
-    if not name:
-        return ""
-
-    # Decode utf-8 characters (Japanese text) in URL filename
-    try:
-        decoded_name = unquote(name, encoding="utf-8")
-    except (UnicodeDecodeError, LookupError):
-        decoded_name = name
-
-    name_without_ext = os.path.splitext(decoded_name)[0]
-    extension = os.path.splitext(decoded_name)[1]
-
-    # Replace problematic characters with underscores, but preserve Unicode characters
-    # Keep alphanumeric, spaces, hyphens, underscores, and Unicode characters
-    sanitized_name = re.sub(r'[<>:"/\\|?*]', "_", name_without_ext)
-
-    # Replace multiple consecutive underscores or spaces with single underscore
-    sanitized_name = re.sub(r"[_\s]+", "_", sanitized_name)
-
-    # Strip leading/trailing underscores and spaces
-    sanitized_name = sanitized_name.strip("_ ")
-
-    if len(sanitized_name.encode("utf-8")) > 50:
-        truncated_name = sanitized_name
-        while len(truncated_name.encode("utf-8")) > 50 and truncated_name:
-            truncated_name = truncated_name[:-1]
-        sanitized_name = truncated_name
-
-    if not sanitized_name:
-        sanitized_name = "unknown_filename"
-
-    return sanitized_name
 
 
 def download_files(
@@ -458,10 +421,6 @@ def save_post_content(
     return download_result
 
 
-def sanitize_filename(value: str) -> str:
-    """Remove characters that can break folder creation."""
-    return value.replace("/", "_").replace("\\", "_")
-
 
 def get_post_title(post_data: Dict[str, Any]) -> str:
     """
@@ -471,18 +430,7 @@ def get_post_title(post_data: Dict[str, Any]) -> str:
     """
     try:
         title = post_data.get("post", {}).get("title", "")
-
-        # Ensure the title is valid for use in filenames
-        invalid_chars = '<>:"/\\|?*.'
-        for char in invalid_chars:
-            title = title.replace(char, "_")
-
-        title = title.strip()
-
-        while title.endswith("."):
-            title = title.rstrip(".")
-
-        return title if title else ""
+        return sanitize_title(title)
     except Exception:
         return ""
 
@@ -551,9 +499,9 @@ def process_posts(links: List[str]) -> None:
                 profile_data = profiles[user_id]
 
             # Create specific folder for the user
-            user_name = sanitize_filename(profile_data.get("name", "unknown_user"))
-            safe_service = sanitize_filename(service)
-            safe_user_id = sanitize_filename(user_id)
+            user_name = sanitize_folder_name(profile_data.get("name", "unknown_user"))
+            safe_service = sanitize_folder_name(service)
+            safe_user_id = sanitize_folder_name(user_id)
 
             user_folder = os.path.join(
                 base_path, f"{user_name}-{safe_service}-{safe_user_id}"
@@ -571,10 +519,23 @@ def process_posts(links: List[str]) -> None:
 
             # Decide folder name based on config setting
             if config.post_folder_name == "title":
+                # Check if old folder with just post_id exists and rename it
+                old_folder_name = post_id
+                old_post_folder = os.path.join(posts_folder, old_folder_name)
+                
                 # Prevent duplicated title
                 folder_name = f"{post_id}_{post_title}"
-                # TODO: check if there are old folders that its name is just "{post_id}"
-                # if such folder exists, rename it into the new form
+                new_post_folder = os.path.join(posts_folder, folder_name)
+                
+                # If old folder exists and new folder doesn't, rename it
+                if os.path.exists(old_post_folder) and not os.path.exists(new_post_folder):
+                    try:
+                        os.rename(old_post_folder, new_post_folder)
+                        print(f"Renamed folder: {old_folder_name} -> {folder_name}")
+                    except OSError as e:
+                        print(f"Warning: Could not rename folder {old_folder_name}: {e}")
+                        # If rename fails, use the old folder
+                        folder_name = old_folder_name
             else:
                 folder_name = post_id
 

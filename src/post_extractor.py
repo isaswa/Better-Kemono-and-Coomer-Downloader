@@ -5,7 +5,8 @@ import requests
 from typing import Dict, List, Tuple, Optional, Any, Union, Callable
 from datetime import datetime
 
-from .config import load_config, Config, get_domains
+from .config import load_config, get_domains
+from .format_helpers import sanitize_folder_name
 
 
 def save_json(file_path: str, data: Any) -> None:
@@ -195,10 +196,6 @@ def process_posts(
     return processed
 
 
-def sanitize_filename(value: str) -> str:
-    """Remove characters that can break folder creation."""
-    return value.replace("/", "_").replace("\\", "_")
-
 
 def extract_posts(profile_url: str, fetch_mode: str = "all") -> str:
     """
@@ -246,9 +243,9 @@ def extract_posts(profile_url: str, fetch_mode: str = "all") -> str:
     save_json(profiles_file, profiles)
 
     # Sanitize the values
-    safe_name = sanitize_filename(name)
-    safe_service = sanitize_filename(service)
-    safe_user_id = sanitize_filename(user_id)
+    safe_name = sanitize_folder_name(name)
+    safe_service = sanitize_folder_name(service)
+    safe_user_id = sanitize_folder_name(user_id)
 
     # Artist folder
     artist_dir = os.path.join(base_dir, f"{safe_name}-{safe_service}-{safe_user_id}")
