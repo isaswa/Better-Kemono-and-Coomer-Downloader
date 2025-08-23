@@ -12,6 +12,7 @@ from src.post_extractor import extract_posts
 from src.post_downloader import process_posts
 from src.batch_file_downloader import batch_download_posts
 from src.config import load_config, save_config, Config, get_domains
+from src.session import create_session
 
 
 def install_requirements() -> None:
@@ -421,9 +422,9 @@ def customize_settings() -> None:
         print("\nUpdated configurations.")
         time.sleep(1)
 
-
 def main_menu() -> None:
     """Application main menu"""
+    create_session()
     while True:
         clear_screen()
         display_logo()

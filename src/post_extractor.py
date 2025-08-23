@@ -1,12 +1,20 @@
 import os
 import sys
 import json
+from pathlib import Path
+from time import sleep
+
 import requests
 from typing import Dict, List, Tuple, Optional, Any, Union, Callable
 from datetime import datetime
 
+from requests import HTTPError
+
 from .config import load_config, get_domains
 from .format_helpers import sanitize_folder_name, get_artist_dir
+from .session import cookie_map, headers
+
+TEMP_JSON = Path("temp_json")
 
 
 def save_json(file_path: str, data: Any) -> None:
@@ -112,12 +120,38 @@ def get_artist_info(profile_url: str) -> Tuple[str, str]:
     return service, user_id
 
 
-def fetch_posts(
-    base_api_url: str, service: str, user_id: str, offset: int = 0
+def fetch_user(base_api_url: str, service: str, domain: str, user_id: str) -> Dict[str, Any]:
+    url = f"{base_api_url}/{service}/user/{user_id}/profile"
+    response = requests.get(url, cookies=cookie_map[domain], headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
+def fetch_post(
+        base_api_url: str, domain: str, service: str, user_id: str, post_id: str
 ) -> Dict[str, Any]:
     # Fetch posts from API
-    url = f"{base_api_url}/{service}/user/{user_id}/posts-legacy?o={offset}"
-    response = requests.get(url)
+    url = f"{base_api_url}/{service}/user/{user_id}/post/{post_id}"
+    sleep(1)
+    response = requests.get(url, cookies=cookie_map[domain], headers=headers)
+    retry = 1
+    while response.status_code == 403 and retry <= 3:
+        sleep(5 ** retry)
+        retry += 1
+        response = requests.get(url, cookies=cookie_map[domain], headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
+def fetch_posts(
+        base_api_url: str, domain: str, service: str, user_id: str, offset: int = 0
+) -> List[Dict[str, Any]]:
+    # Fetch posts from API
+    if offset == 0:
+        url = f"{base_api_url}/{service}/user/{user_id}/posts"
+    else:
+        url = f"{base_api_url}/{service}/user/{user_id}/posts?o={offset}"
+    response = requests.get(url, cookies=cookie_map[domain], headers=headers)
     response.raise_for_status()
     return response.json()
 
@@ -134,18 +168,35 @@ def save_json_incrementally(
 
 
 def process_posts(
-    posts: List[Dict[str, Any]],
-    previews: List[Dict[str, Any]],
-    attachments_data: List[Dict[str, Any]],
-    page_number: int,
-    offset: int,
-    base_server: str,
-    save_empty_files: bool = True,
-    id_filter: Optional[Callable[[str], bool]] = None,
+        base_api_url: str,
+        domain: str,
+        posts: List[Dict[str, Any]],
+        page_number: int,
+        offset: int,
+        base_server: str,
+        save_empty_files: bool = True,
+        id_filter: Optional[Callable[[str], bool]] = None,
 ) -> List[Dict[str, Any]]:
     # Process posts and organize file links
+    not_done = []
     processed = []
     for post in posts:
+        original_post = post
+        local_post_json = TEMP_JSON / post["user"] / (post["id"] + ".json")
+        if local_post_json.exists():
+            with local_post_json.open() as fr:
+                post = json.load(fr)
+        else:
+            try:
+                post = fetch_post(base_api_url, domain, post["service"], post["user"], post["id"])
+            except HTTPError as err:
+                print("Rate limited {} - {}".format(post["user"], post["id"]))
+                not_done.append(original_post)
+                continue
+            with local_post_json.open("w") as fw:
+                json.dump(post, fw)
+        previews = post["previews"]
+        post = post["post"]
         # ID filter if specified
         if id_filter and not id_filter(post["id"]):
             continue
@@ -162,7 +213,7 @@ def process_posts(
         }
 
         # Combine previews and attachments_data into a single list for searching
-        all_data = previews + attachments_data
+        all_data = previews + post["attachments"]
 
         # Process files in the file field
         if "file" in post and post["file"]:
@@ -183,17 +234,22 @@ def process_posts(
                 (item for item in all_data if item["path"] == attachment["path"]), None
             )
             if matching_data:
+                if len(matching_data) < 4:
+                    print("Malformed data {} - {} attachment {}".format(post["user"], post["id"], attachment["path"]))
+                    break
                 file_url = f"{matching_data['server']}/data{attachment['path']}"
                 if file_url not in [f["url"] for f in result["files"]]:
                     result["files"].append(
                         {"name": attachment["name"], "url": file_url}
                     )
-
         # Ignore posts without files if save_empty_files is False
         if not save_empty_files and not result["files"]:
             continue
 
         processed.append(result)
+
+    if len(not_done) > 0:
+        raise IOError("{} posts failed due to rate limit, please retry".format(len(not_done)))
 
     return processed
 
@@ -213,7 +269,7 @@ def extract_posts(profile_url: str, fetch_mode: str = "all") -> str:
     BASE_API_URL, BASE_SERVER, BASE_DIR = get_base_config(profile_url)
 
     # Base folder
-    base_dir = BASE_DIR
+    base_dir, domain = BASE_DIR, BASE_DIR
     os.makedirs(base_dir, exist_ok=True)
 
     # Update the profiles.json file
@@ -226,22 +282,23 @@ def extract_posts(profile_url: str, fetch_mode: str = "all") -> str:
 
     # Fetch first set of posts for general information
     service, user_id = get_artist_info(profile_url)
-    initial_data = fetch_posts(BASE_API_URL, service, user_id, offset=0)
-    name = initial_data["props"]["name"]
-    count = initial_data["props"]["count"]
+    user_data = fetch_user(BASE_API_URL, service, domain, user_id)
+    name = user_data["name"]
+    count = user_data["post_count"]
 
     # Save artist information
     artist_info = {
         "id": user_id,
         "name": name,
         "service": service,
-        "indexed": initial_data["props"]["artist"]["indexed"],
-        "updated": initial_data["props"]["artist"]["updated"],
-        "public_id": initial_data["props"]["artist"]["public_id"],
-        "relation_id": initial_data["props"]["artist"]["relation_id"],
+        "indexed": user_data["indexed"],
+        "updated": user_data["updated"],
+        "public_id": user_data["public_id"],
+        "relation_id": user_data["relation_id"],
     }
     profiles[user_id] = artist_info
     save_json(profiles_file, profiles)
+    (TEMP_JSON / user_id).mkdir(parents=True, exist_ok=True)
 
     # Artist folder
     artist_dir_name = get_artist_dir(name, service, user_id)
@@ -285,21 +342,12 @@ def extract_posts(profile_url: str, fetch_mode: str = "all") -> str:
     # Main processing
     for offset in offsets:
         page_number = (offset // 50) + 1
-        post_data = fetch_posts(BASE_API_URL, service, user_id, offset=offset)
-        posts = post_data["results"]
-        previews = [
-            item for sublist in post_data.get("result_previews", []) for item in sublist
-        ]
-        attachments = [
-            item
-            for sublist in post_data.get("result_attachments", [])
-            for item in sublist
-        ]
+        post_data = fetch_posts(BASE_API_URL, domain, service, user_id, offset=offset)
 
         processed_posts = process_posts(
-            posts,
-            previews,
-            attachments,
+            BASE_API_URL,
+            domain,
+            post_data,
             page_number,
             offset,
             BASE_SERVER,

@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import sys
 from tqdm import tqdm
 
+from src.session import headers, cookie_map
 from .config import load_config, Config
 from .format_helpers import sanitize_filename, sanitize_title
 from .failure_handlers import add_failed_download, remove_failed_download
@@ -20,7 +21,12 @@ def download_file(file_url: str, save_path: str) -> Tuple[bool, Optional[str]]:
     Returns (success, error_message) tuple.
     """
     try:
-        response = requests.get(file_url, stream=True)
+        print("Downloading {}".format(file_url))
+        if "kemono" in file_url:
+            domain = "kemono"
+        else:
+            domain = "coomer"
+        response = requests.get(file_url, headers=headers, cookies=cookie_map[domain], stream=True)
         response.raise_for_status()
 
         # Get total file size
