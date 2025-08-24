@@ -23,7 +23,7 @@ from .failure_handlers import (
     add_failed_download,
     remove_failed_download,
 )
-
+from .session import cookie_map, headers
 
 
 def ensure_directory(path: str) -> None:
@@ -97,7 +97,7 @@ def fetch_profile(domain: str, service: str, user_id: str) -> Dict[str, Any]:
     """
     api_base_url = get_api_base_url(domain)
     url = f"{api_base_url}{service}/user/{user_id}/profile"
-    response = requests.get(url)
+    response = requests.get(url, cookies=cookie_map[domain], headers=headers)
     response.raise_for_status()
     return response.json()
 
@@ -108,7 +108,7 @@ def fetch_post(domain: str, service: str, user_id: str, post_id: str) -> Dict[st
     """
     api_base_url = get_api_base_url(domain)
     url = f"{api_base_url}{service}/user/{user_id}/post/{post_id}"
-    response = requests.get(url)
+    response = requests.get(url, cookies=cookie_map[domain], headers=headers)
     response.raise_for_status()
     response.encoding = "utf-8"
     return response.json()
@@ -240,7 +240,8 @@ def download_files(
         # for debugging
         # print(f"Start downloading: {url}")
         try:
-            response = requests.get(url, stream=True)
+            response = requests.get(url, cookies=cookie_map["kemono" if "kemono" in domain else "coomer"],
+                                    headers=headers, stream=True)
             response.raise_for_status()
 
             total_size = int(response.headers.get("content-length", 0))
