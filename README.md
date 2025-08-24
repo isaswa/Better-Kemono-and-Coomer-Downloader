@@ -6,6 +6,8 @@ This is a forked better version of [**Kemono and Coomer Downloader**](https://gi
 
 Check [**Releases**](https://github.com/isaswa/Better-Kemono-and-Coomer-Downloader/releases) for stable release versions of this tool. The main branch could contain some experimental features.
 
+The latest features in development or bugfix will be updated in [develop branch](https://github.com/isaswa/Better-Kemono-and-Coomer-Downloader/tree/develop) firstly, and then be merged into stable main branch after well tested. 
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=isaswa/Better-Kemono-and-Coomer-Downloader&type=Date)](https://star-history.com/#isaswa/Better-Kemono-and-Coomer-Downloader&Date)
