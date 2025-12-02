@@ -42,7 +42,7 @@ def sanitize_title(unsanitized: str) -> str:
     title = unsanitized
     
     # Ensure the title is valid for use in filenames
-    invalid_chars = '<>:"/\\|?*.'
+    invalid_chars = '<>:"/\\|?*.\n\r'
     for char in invalid_chars:
         title = title.replace(char, "_")
     
